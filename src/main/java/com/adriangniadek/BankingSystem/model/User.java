@@ -20,12 +20,12 @@ public class User {
     private Long id;
 
     @NotBlank(message = "First name is required")
-    @Size(min = 2, max = 25, message = "First name must be between 2 and 50 characters")
+    @Size(min = 2, max = 25, message = "First name must be between 2 and 25 characters")
     @Column(nullable = false, length = 50)
     private String firstName;
 
     @NotBlank(message = "Last name is required")
-    @Size(min = 2, max = 25, message = "Last name must be between 2 and 50 characters")
+    @Size(min = 2, max = 25, message = "Last name must be between 2 and 25 characters")
     @Column(nullable = false, length = 50)
     private String lastName;
 

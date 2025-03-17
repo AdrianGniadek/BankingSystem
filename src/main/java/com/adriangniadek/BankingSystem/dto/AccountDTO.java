@@ -1,4 +1,4 @@
-package com.adriangniadek.BankingSystem.model;
+package com.adriangniadek.BankingSystem.dto;
 
 import java.math.BigDecimal;
 
