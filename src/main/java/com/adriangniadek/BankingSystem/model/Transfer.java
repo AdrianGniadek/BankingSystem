@@ -1,28 +1,37 @@
 package com.adriangniadek.BankingSystem.model;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "transfers")
-@Data
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString(exclude = {"sourceAccount", "targetAccount"})
 public class Transfer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne
-    @JoinColumn(name = "source_account_id")
+    @JoinColumn(nullable = false)
     private Account sourceAccount;
 
     @ManyToOne
-    @JoinColumn(name = "target_account_id")
+    @JoinColumn(nullable = false)
     private Account targetAccount;
+
+    @Column(nullable = false)
     private BigDecimal amount;
+
+    @Column(nullable = false)
     private String currency;
+
     private String description;
     private String status;
     private LocalDateTime timestamp;
