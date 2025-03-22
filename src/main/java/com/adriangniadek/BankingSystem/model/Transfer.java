@@ -19,20 +19,25 @@ public class Transfer {
     private Long id;
 
     @ManyToOne
-    @JoinColumn(nullable = false)
+    @JoinColumn(name = "source_account_id", nullable = false)
     private Account sourceAccount;
 
     @ManyToOne
-    @JoinColumn(nullable = false)
+    @JoinColumn(name = "target_account_id", nullable = false)
     private Account targetAccount;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 3)
     private String currency;
 
+    @Column(length = 255)
     private String description;
+
+    @Column(nullable = false, length = 20)
     private String status;
-    private LocalDateTime timestamp;
+
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
 }
