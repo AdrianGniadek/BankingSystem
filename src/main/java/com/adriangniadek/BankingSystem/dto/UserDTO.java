@@ -1,7 +1,6 @@
-package com.adriangniadek.BankingSystem.model;
+package com.adriangniadek.BankingSystem.dto;
 
 import jakarta.validation.constraints.*;
-
 import java.util.Set;
 
 public record UserDTO(Long id,
@@ -16,5 +15,6 @@ public record UserDTO(Long id,
                       @NotBlank(message = "Email is required")
                       @Email(message = "Email should be valid")
                       String email,
+
                       Set<String> roles) {
 }

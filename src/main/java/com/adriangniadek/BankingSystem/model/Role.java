@@ -1,24 +1,22 @@
 package com.adriangniadek.BankingSystem.model;
 
-import lombok.Data;
+import com.adriangniadek.BankingSystem.enums.RoleType;
+import lombok.*;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 
-@Data
 @Entity
 @Table(name = "roles")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Role {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
-    @Column(unique = true)
-    private String name;
-
-    public Role() {}
-
-    public Role(String name) {
-        this.name = name;
-    }
+    @Enumerated(EnumType.STRING)
+    @Column(unique = true, nullable = false)
+    private RoleType name;
 }
+
