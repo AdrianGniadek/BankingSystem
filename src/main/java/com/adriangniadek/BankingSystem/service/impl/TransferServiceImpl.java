@@ -25,6 +25,15 @@ public class TransferServiceImpl implements TransferService {
         Account target = accountRepository.findById(transferDTO.targetAccountId())
                 .orElseThrow(() -> new RuntimeException("Target account not found"));
 
+        if (source.getBalance().compareTo(transferDTO.amount()) < 0) {
+            throw new RuntimeException("Insufficient funds in the source account");
+        }
+
+        source.setBalance(source.getBalance().subtract(transferDTO.amount()));
+        accountRepository.save(source);
+        target.setBalance(target.getBalance().add(transferDTO.amount()));
+        accountRepository.save(target);
+
         Transfer transfer = new Transfer(null, source, target, transferDTO.amount(),
                 transferDTO.currency(), transferDTO.description(), "PENDING",
                 transferDTO.createdAt());

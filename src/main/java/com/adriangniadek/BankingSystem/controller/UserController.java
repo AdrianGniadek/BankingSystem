@@ -17,8 +17,8 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody @Valid UserDTO userDTO) {
-        UserDTO savedUser = userService.createUser(userDTO);
+    public ResponseEntity<UserDTO> createUser(@RequestBody @Valid UserDTO userDTO, String password) {
+        UserDTO savedUser = userService.createUser(userDTO,password);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
