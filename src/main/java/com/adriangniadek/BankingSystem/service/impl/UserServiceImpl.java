@@ -23,7 +23,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
-    public UserDTO createUser(UserDTO userDTO) {
+    public UserDTO createUser(UserDTO userDTO, String password) {
         if (userRepository.existsByEmail(userDTO.email())) {
             throw new IllegalArgumentException("Email already in use.");
         }
@@ -32,7 +32,7 @@ public class UserServiceImpl implements UserService {
         user.setFirstName(userDTO.firstName());
         user.setLastName(userDTO.lastName());
         user.setEmail(userDTO.email());
-        user.setPassword(passwordEncoder.encode("defaultPassword123"));
+        user.setPassword(passwordEncoder.encode(password));
 
         Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
                 .orElseThrow(() -> new RuntimeException("Role not found"));
@@ -54,5 +54,28 @@ public class UserServiceImpl implements UserService {
                 .map(user -> new UserDTO(user.getId(), user.getFirstName(), user.getLastName(), user.getEmail(),
                         user.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet())))
                 .toList();
+    }
+
+    @Override
+    public UserDTO updateUser(Long id, UserDTO userDTO) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setFirstName(userDTO.firstName());
+        user.setLastName(userDTO.lastName());
+        user.setEmail(userDTO.email());
+
+        User updatedUser = userRepository.save(user);
+
+        return new UserDTO(updatedUser.getId(), updatedUser.getFirstName(), updatedUser.getLastName(), updatedUser.getEmail(),
+                updatedUser.getRoles().stream().map(role -> role.getName().name()).collect(Collectors.toSet()));
+    }
+
+    @Override
+    public void deleteUser(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("User not found");
+        }
+        userRepository.deleteById(id);
     }
 }
