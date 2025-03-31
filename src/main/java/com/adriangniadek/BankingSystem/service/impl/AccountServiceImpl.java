@@ -13,14 +13,13 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
-    private TransferRepository transferRepository;
+    private final TransferRepository transferRepository;
 
     @Override
     public AccountDTO createAccount(Long userId, AccountDTO accountDTO) {
