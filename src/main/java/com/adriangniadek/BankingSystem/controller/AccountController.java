@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -26,5 +28,17 @@ public class AccountController {
     public ResponseEntity<List<AccountDTO>> getUserAccounts(@PathVariable Long userId) {
         List<AccountDTO> accounts = accountService.getUserAccounts(userId);
         return ResponseEntity.ok(accounts);
+    }
+
+    @GetMapping("/balance/{accountId}")
+    public ResponseEntity<BigDecimal> getAccountBalance(@PathVariable Long accountId) {
+        BigDecimal balance = accountService.getAccountBalance(accountId);
+        return ResponseEntity.ok(balance);
+    }
+
+    @GetMapping("/transactions/{accountId}")
+    public ResponseEntity<List<TransferDTO>> getTransactionHistory(@PathVariable Long accountId) {
+        List<TransferDTO> history = accountService.getAccountTransactionHistory(accountId);
+        return ResponseEntity.ok(history);
     }
 }
