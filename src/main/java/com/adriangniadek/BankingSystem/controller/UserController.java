@@ -17,8 +17,9 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody @Valid UserDTO userDTO, String password) {
-        UserDTO savedUser = userService.createUser(userDTO,password);
+    public ResponseEntity<UserDTO> createUser(@RequestBody @Valid UserDTO userDTO,
+                                              @RequestParam("password") String password) {
+        UserDTO savedUser = userService.createUser(userDTO, password);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
@@ -26,5 +27,17 @@ public class UserController {
     public ResponseEntity<List<UserDTO>> getAllUsers() {
         List<UserDTO> users = userService.getAllUsers();
         return ResponseEntity.ok(users);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @RequestBody @Valid UserDTO userDTO) {
+        UserDTO updatedUser = userService.updateUser(id, userDTO);
+        return ResponseEntity.ok(updatedUser);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 }
