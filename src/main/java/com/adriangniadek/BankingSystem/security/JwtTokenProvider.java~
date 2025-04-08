@@ -1,0 +1,4 @@
+package com.adriangniadek.BankingSystem.security;
+
+public class JwtTokenProvider {
+}
