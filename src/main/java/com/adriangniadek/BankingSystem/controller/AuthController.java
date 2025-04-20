@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 import com.adriangniadek.BankingSystem.dto.JwtResponse;
 
 @RestController
-@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
