@@ -3,15 +3,18 @@ package com.adriangniadek.BankingSystem.service.impl;
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.model.Account;
+import com.adriangniadek.BankingSystem.model.Transfer;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
 import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.AccountService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -63,5 +66,59 @@ public class AccountServiceImpl implements AccountService {
                         t.getTargetAccount().getId(), t.getAmount(),
                         t.getCurrency(), t.getDescription(), t.getStatus(), t.getCreatedAt()))
                 .toList();
+    }
+    @Transactional
+    @Override
+    public TransferDTO transferMoney(Long sourceAccountId, Long targetAccountId, BigDecimal amount,
+                                     String currency, String description) {
+        // Validate input parameters
+        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Transfer amount must be greater than zero");
+        }
+
+        if (sourceAccountId.equals(targetAccountId)) {
+            throw new IllegalArgumentException("Source and target accounts cannot be the same");
+        }
+
+        Account sourceAccount = accountRepository.findById(sourceAccountId)
+                .orElseThrow(() -> new RuntimeException("Source account not found"));
+
+        Account targetAccount = accountRepository.findById(targetAccountId)
+                .orElseThrow(() -> new RuntimeException("Target account not found"));
+
+        if (!sourceAccount.getCurrency().equals(currency) || !targetAccount.getCurrency().equals(currency)) {
+            throw new IllegalArgumentException("Currency mismatch. Transfer currency must match both account currencies");
+        }
+
+        if (sourceAccount.getBalance().compareTo(amount) < 0) {
+            throw new RuntimeException("Insufficient funds in source account");
+        }
+
+        Transfer transfer = new Transfer();
+        transfer.setSourceAccount(sourceAccount);
+        transfer.setTargetAccount(targetAccount);
+        transfer.setAmount(amount);
+        transfer.setCurrency(currency);
+        transfer.setDescription(description);
+        transfer.setStatus("COMPLETED");
+        transfer.setCreatedAt(LocalDateTime.now());
+
+        sourceAccount.setBalance(sourceAccount.getBalance().subtract(amount));
+        targetAccount.setBalance(targetAccount.getBalance().add(amount));
+
+        accountRepository.save(sourceAccount);
+        accountRepository.save(targetAccount);
+        Transfer savedTransfer = transferRepository.save(transfer);
+
+        return new TransferDTO(
+                savedTransfer.getId(),
+                savedTransfer.getSourceAccount().getId(),
+                savedTransfer.getTargetAccount().getId(),
+                savedTransfer.getAmount(),
+                savedTransfer.getCurrency(),
+                savedTransfer.getDescription(),
+                savedTransfer.getStatus(),
+                savedTransfer.getCreatedAt()
+        );
     }
 }

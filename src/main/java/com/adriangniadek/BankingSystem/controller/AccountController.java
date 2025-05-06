@@ -41,4 +41,17 @@ public class AccountController {
         List<TransferDTO> history = accountService.getAccountTransactionHistory(accountId);
         return ResponseEntity.ok(history);
     }
+
+    @PostMapping("/transfer")
+    public ResponseEntity<TransferDTO> transferMoney(
+            @RequestParam Long sourceAccountId,
+            @RequestParam Long targetAccountId,
+            @RequestParam BigDecimal amount,
+            @RequestParam String currency,
+            @RequestParam(required = false) String description) {
+
+        TransferDTO transfer = accountService.transferMoney(
+                sourceAccountId, targetAccountId, amount, currency, description);
+        return ResponseEntity.status(HttpStatus.CREATED).body(transfer);
+    }
 }
