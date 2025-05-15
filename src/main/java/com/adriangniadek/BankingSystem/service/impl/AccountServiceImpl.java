@@ -60,6 +60,21 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    public AccountDTO getAccountById(Long accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+        
+        return new AccountDTO(
+            account.getId(),
+            account.getAccountNumber(),
+            account.getAccountType(),
+            account.getBalance(),
+            account.getCurrency(),
+            account.getUser().getId()
+        );
+    }
+
+    @Override
     public List<TransferDTO> getAccountTransactionHistory(Long accountId) {
         return transferRepository.findBySourceAccountId(accountId).stream()
                 .map(t -> new TransferDTO(t.getId(), t.getSourceAccount().getId(),
@@ -71,7 +86,6 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public TransferDTO transferMoney(Long sourceAccountId, Long targetAccountId, BigDecimal amount,
                                      String currency, String description) {
-        // Validate input parameters
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Transfer amount must be greater than zero");
         }

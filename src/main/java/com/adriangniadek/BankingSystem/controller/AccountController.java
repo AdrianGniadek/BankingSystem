@@ -30,6 +30,12 @@ public class AccountController {
         return ResponseEntity.ok(accounts);
     }
 
+    @GetMapping("/details/{accountId}")
+    public ResponseEntity<AccountDTO> getAccountDetails(@PathVariable Long accountId) {
+        AccountDTO account = accountService.getAccountById(accountId);
+        return ResponseEntity.ok(account);
+    }
+
     @GetMapping("/balance/{accountId}")
     public ResponseEntity<BigDecimal> getAccountBalance(@PathVariable Long accountId) {
         BigDecimal balance = accountService.getAccountBalance(accountId);

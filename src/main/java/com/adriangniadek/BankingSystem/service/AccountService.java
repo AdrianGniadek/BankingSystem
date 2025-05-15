@@ -11,7 +11,7 @@ public interface AccountService {
     AccountDTO createAccount(Long userId, AccountDTO accountDTO);
     List<AccountDTO> getUserAccounts(Long userId);
     BigDecimal getAccountBalance(Long accountId);
-
+    AccountDTO getAccountById(Long accountId);
     List<TransferDTO> getAccountTransactionHistory(Long accountId);
 
     @Transactional
