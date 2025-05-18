@@ -1,15 +1,18 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -46,6 +49,16 @@ public class AccountController {
     public ResponseEntity<List<TransferDTO>> getTransactionHistory(@PathVariable Long accountId) {
         List<TransferDTO> history = accountService.getAccountTransactionHistory(accountId);
         return ResponseEntity.ok(history);
+    }
+
+    @GetMapping("/statement/{accountId}")
+    public ResponseEntity<AccountStatementDTO> getAccountStatement(
+            @PathVariable Long accountId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        
+        AccountStatementDTO statement = accountService.generateAccountStatement(accountId, startDate, endDate);
+        return ResponseEntity.ok(statement);
     }
 
     @PostMapping("/transfer")

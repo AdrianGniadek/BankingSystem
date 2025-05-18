@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Transfer;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -71,6 +73,48 @@ public class AccountServiceImpl implements AccountService {
             account.getBalance(),
             account.getCurrency(),
             account.getUser().getId()
+        );
+    }
+
+    @Override
+    public AccountStatementDTO generateAccountStatement(Long accountId, LocalDateTime startDate, LocalDateTime endDate) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        List<Transfer> transfers = transferRepository.findByAccountIdAndDateRange(accountId, startDate, endDate);
+
+        BigDecimal openingBalance = account.getBalance();
+        
+        for (Transfer transfer : transfers) {
+            if (transfer.getSourceAccount().getId().equals(accountId)) {
+                openingBalance = openingBalance.add(transfer.getAmount());
+            } else if (transfer.getTargetAccount().getId().equals(accountId)) {
+                openingBalance = openingBalance.subtract(transfer.getAmount());
+            }
+        }
+
+        List<TransferDTO> transferDTOs = transfers.stream()
+                .map(t -> new TransferDTO(
+                        t.getId(),
+                        t.getSourceAccount().getId(),
+                        t.getTargetAccount().getId(),
+                        t.getAmount(),
+                        t.getCurrency(),
+                        t.getDescription(),
+                        t.getStatus(),
+                        t.getCreatedAt()))
+                .toList();
+        
+        return new AccountStatementDTO(
+                account.getId(),
+                account.getAccountNumber(),
+                account.getAccountType(),
+                account.getCurrency(),
+                startDate,
+                endDate,
+                openingBalance,
+                account.getBalance(),
+                transferDTOs
         );
     }
 
