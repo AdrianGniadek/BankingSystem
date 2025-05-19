@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout('User Details', ~{::div})}">
+<body>
+<div>
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="page-title">User Details</h1>
+        </div>
+        <div class="col text-right">
+            <a th:href="@{/users/{id}/edit(id=${user.id})}" class="btn btn-warning">Edit</a>
+            <a th:href="@{/users}" class="btn">Back</a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Personal Information
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-6">
+                    <p><strong>ID:</strong> <span th:text="${user.id}">1</span></p>
+                </div>
+                <div class="col-6">
+                    <p><strong>Email:</strong> <span th:text="${user.email}">john@example.com</span></p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6">
+                    <p><strong>First Name:</strong> <span th:text="${user.firstName}">John</span></p>
+                </div>
+                <div class="col-6">
+                    <p><strong>Last Name:</strong> <span th:text="${user.lastName}">Doe</span></p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-6">
+                    <p><strong>Created:</strong> <span th:text="${#temporals.format(user.createdAt, 'dd-MM-yyyy HH:mm')}">01-01-2025</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="row">
+                <div class="col">
+                    User Accounts
+                </div>
+                <div class="col text-right">
+                    <a th:href="@{/accounts/new/{userId}(userId=${user.id})}" class="btn">Add Account</a>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div th:if="${accounts.empty}" class="alert alert-info">
+                This user has no accounts.
+            </div>
+
+            <table th:unless="${accounts.empty}">
+                <thead>
+                <tr>
+                    <th>Account Number</th>
+                    <th>Type</th>
+                    <th>Balance</th>
+                    <th>Currency</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="account : ${accounts}">
+                    <td th:text="${account.accountNumber}">123456789</td>
+                    <td th:text="${account.accountType}">Checking</td>
+                    <td th:text="${account.balance}">1000.00</td>
+                    <td th:text="${account.currency}">USD</td>
+                    <td>
+                        <a th:href="@{/accounts/{id}(id=${account.id})}" class="btn">View</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

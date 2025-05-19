@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout('Dashboard', ~{::div})}">
+<body>
+<div>
+    <h1 class="page-title">Dashboard</h1>
+
+    <div class="row">
+        <div class="col-4">
+            <div class="card">
+                <div class="card-header">
+                    Total Users
+                </div>
+                <div class="card-body">
+                    <h2 th:text="${userCount}">0</h2>
+                    <a th:href="@{/users}">View Users →</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-4">
+            <div class="card">
+                <div class="card-header">
+                    Total Accounts
+                </div>
+                <div class="card-body">
+                    <h2 th:text="${accountCount}">0</h2>
+                    <a th:href="@{/accounts}">View Accounts →</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-4">
+            <div class="card">
+                <div class="card-header">
+                    Total Transfers
+                </div>
+                <div class="card-body">
+                    <h2 th:text="${transferCount}">0</h2>
+                    <a th:href="@{/transfers}">View Transfers →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -8,6 +8,8 @@ import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.service.TransferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,4 +54,20 @@ public class TransferServiceImpl implements TransferService {
                         t.getCurrency(), t.getDescription(), t.getStatus(), t.getCreatedAt()))
                 .toList();
     }
+
+    @Override
+    public Collection<Object> getAllTransfers() {
+        return transferRepository.findAll().stream()
+                .map(t -> new TransferDTO(
+                        t.getId(),
+                        t.getSourceAccount().getId(),
+                        t.getTargetAccount().getId(),
+                        t.getAmount(),
+                        t.getCurrency(),
+                        t.getDescription(),
+                        t.getStatus(),
+                        t.getCreatedAt()))
+                .collect(Collectors.toList());
+    }
+
 }

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content)">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">Banking System</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+<header>
+    <div class="container">
+        <div class="logo">
+            <a href="/">Banking System</a>
+        </div>
+        <nav>
+            <ul class="nav-links">
+                <li><a th:href="@{/}">Home</a></li>
+                <li><a th:href="@{/login}">Login</a></li>
+                <li><a th:href="@{/register}">Register</a></li>
+            </ul>
+        </nav>
+    </div>
+</header>
+
+<div class="container">
+    <div class="row">
+        <div class="col-4 col-md-3 col-lg-2 sidebar">
+            <ul class="sidebar-nav">
+                <li><a th:href="@{/}">Dashboard</a></li>
+                <li><a th:href="@{/accounts}">Accounts</a></li>
+                <li><a th:href="@{/transfers}">Transfers</a></li>
+                <li><a th:href="@{/users}">Users</a></li>
+            </ul>
+        </div>
+
+        <div class="col-8 col-md-9 col-lg-10">
+            <main>
+                <div th:replace="${content}">
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+<footer>
+    <div class="container">
+        <p>© 2025 Banking System</p>
+    </div>
+</footer>
+</body>
+</html>
