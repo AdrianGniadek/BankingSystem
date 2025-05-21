@@ -54,11 +54,11 @@
             </div>
         </div>
         <div class="card-body">
-            <div th:if="${accounts.empty}" class="alert alert-info">
+            <div th:if="${#lists.isEmpty(accounts)}" class="alert alert-info">
                 This user has no accounts.
             </div>
 
-            <table th:unless="${accounts.empty}">
+            <table th:unless="${#lists.isEmpty(accounts)}">
                 <thead>
                 <tr>
                     <th>Account Number</th>

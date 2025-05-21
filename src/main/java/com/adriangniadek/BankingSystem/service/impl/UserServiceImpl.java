@@ -35,12 +35,17 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(password));
 
         Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseGet(() -> {
+                    Role newRole = new Role();
+                    newRole.setName(RoleType.ROLE_USER);
+                    return roleRepository.save(newRole);
+                });
 
         user.setRoles(Set.of(userRole));
         User savedUser = userRepository.save(user);
 
-        return new UserDTO(savedUser.getId(), savedUser.getFirstName(), savedUser.getLastName(), savedUser.getEmail(), Set.of("ROLE_USER"));
+        return new UserDTO(savedUser.getId(), savedUser.getFirstName(), savedUser.getLastName(),
+                savedUser.getEmail(), Set.of("ROLE_USER"));
     }
 
     @Override

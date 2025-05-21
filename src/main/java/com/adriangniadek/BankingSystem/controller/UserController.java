@@ -17,6 +17,7 @@ import java.util.List;
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
+    private static final String USER_FORM_VIEW = "users/form";
     private final UserService userService;
     private final AccountService accountService;
 
@@ -31,37 +32,42 @@ public class UserController {
     public String viewUser(@PathVariable Long id, Model model) {
         UserDTO user = userService.getUserById(id);
         List<AccountDTO> accounts = accountService.getUserAccounts(id);
-        
+
         model.addAttribute("user", user);
         model.addAttribute("accounts", accounts);
-        
+
         return "users/view";
     }
 
     @GetMapping("/new")
     public String newUserForm(Model model) {
         model.addAttribute("user", new UserDTO(null, "", "", "", null));
-        return "users/form";
+        return USER_FORM_VIEW;
     }
 
     @PostMapping("/new")
     public String createUser(@Valid @ModelAttribute("user") UserDTO userDTO,
                              BindingResult result,
-                             @RequestParam String password) {
-
+                             @RequestParam String password,
+                             Model model) {
         if (result.hasErrors()) {
-            return "users/form";
+            return USER_FORM_VIEW;
         }
 
-        UserDTO savedUser = userService.createUser(userDTO, password);
-        return redirectToUserView(savedUser);
+        try {
+            UserDTO savedUser = userService.createUser(userDTO, password);
+            return redirectToUserView(savedUser);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+            return USER_FORM_VIEW;
+        }
     }
 
     @GetMapping("/{id}/edit")
     public String editUserForm(@PathVariable Long id, Model model) {
         UserDTO user = userService.getUserById(id);
         model.addAttribute("user", user);
-        return "users/form";
+        return USER_FORM_VIEW;
     }
 
     @PostMapping("/{id}/edit")
@@ -70,7 +76,8 @@ public class UserController {
                              BindingResult result) {
 
         if (result.hasErrors()) {
-            return "users/form";
+            return USER_FORM_VIEW;
+
         }
 
         UserDTO updatedUser = userService.updateUser(id, userDTO);
