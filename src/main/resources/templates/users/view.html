@@ -36,7 +36,7 @@
             </div>
             <div class="row">
                 <div class="col-6">
-                    <p><strong>Created:</strong> <span th:text="${#temporals.format(user.createdAt, 'dd-MM-yyyy HH:mm')}">01-01-2025</span></p>
+                    <p><strong>Created:</strong> <span th:text="${user?.createdAt != null ? #temporals.format(user.createdAt, 'dd-MM-yyyy HH:mm') : '-'}">01-01-2025</span></p>
                 </div>
             </div>
         </div>

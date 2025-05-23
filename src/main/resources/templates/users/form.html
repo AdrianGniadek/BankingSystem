@@ -7,7 +7,7 @@
 
   <div class="card">
     <div class="card-body">
-      <form th:action="${user.id != null} ? @{/users/{id}/edit(id=${user.id})} : @{/users/new}"
+      <form th:action="@{${user.id != null ? '/users/' + user.id + '/edit' : '/users/new'}}"
             th:object="${user}" method="post">
 
         <input type="hidden" th:field="*{id}" />
