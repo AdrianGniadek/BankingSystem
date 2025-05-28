@@ -42,6 +42,16 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @NotBlank
+    @Pattern(regexp = "\\d{9}", message = "Phone number must be exactly 9 digits")
+    @Column(nullable = false, length = 9)
+    private String phoneNumber;
+
+    @NotBlank
+    @Pattern(regexp = "\\d{11}", message = "PESEL must be exactly 11 digits")
+    @Column(nullable = false, length = 11, unique = true)
+    private String pesel;
+
     @CreatedDate
     @Column(updatable = false)
     private LocalDateTime createdAt;

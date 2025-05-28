@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
+import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.enums.RoleType;
@@ -7,6 +8,7 @@ import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.RoleRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.UserService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -77,5 +79,27 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("User not found");
         }
         userRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional
+    public void registerUser(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("Email is already registered.");
+        }
+
+        User user = new User();
+        user.setFirstName(request.firstName());
+        user.setLastName(request.lastName());
+        user.setEmail(request.email());
+        user.setPesel(request.pesel());
+        user.setPhoneNumber(request.phoneNumber());
+        user.setPassword(passwordEncoder.encode(request.password()));
+
+        Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
+        user.setRoles(Set.of(userRole));
+
+        userRepository.save(user);
     }
 }

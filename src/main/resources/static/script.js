@@ -64,3 +64,41 @@ async function fetchAccounts() {
         alert("Błąd połączenia");
     }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const registerForm = document.getElementById("register-form");
+    if (registerForm) {
+        registerForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const user = {
+                firstName: document.getElementById("firstName").value,
+                lastName: document.getElementById("lastName").value,
+                email: document.getElementById("email").value,
+                password: document.getElementById("password").value,
+                pesel: document.getElementById("pesel").value,
+                phoneNumber: document.getElementById("phoneNumber").value
+            };
+
+            try {
+                const response = await fetch(`${BASE_URL}/register`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(user)
+                });
+
+                if (response.ok) {
+                    alert("Rejestracja zakończona sukcesem! Możesz się teraz zalogować.");
+                    window.location.href = "login.html";
+                } else {
+                    const msg = await response.text();
+                    alert("Błąd rejestracji: " + msg);
+                }
+            } catch (err) {
+                console.error("Błąd:", err);
+                alert("Błąd połączenia z serwerem");
+            }
+        });
+    }
+});
+

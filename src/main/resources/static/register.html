@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Rejestracja</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h2>Rejestracja użytkownika</h2>
+<form id="register-form">
+  <label>Imię:
+    <input type="text" id="firstName" required>
+  </label>
+  <label>Nazwisko:
+    <input type="text" id="lastName" required>
+  </label>
+  <label>Email:
+    <input type="email" id="email" required>
+  </label>
+  <label>Hasło:
+    <input type="password" id="password" required>
+  </label>
+  <label>PESEL:
+    <input type="text" id="pesel" required>
+  </label>
+  <label>Telefon:
+    <input type="text" id="phoneNumber" required>
+  </label>
+  <button type="submit">Zarejestruj się</button>
+</form>
+
+<p>Masz już konto? <button type="submi" onclick="window.location.href = 'login.html'">Zaloguj się</button>></p>
+
+<script src="script.js"></script>
+</body>
+</html>
