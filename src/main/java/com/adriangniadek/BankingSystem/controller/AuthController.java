@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import com.adriangniadek.BankingSystem.dto.JwtResponse;
 
 @RestController
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -35,7 +36,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<String> register(@RequestBody @Valid RegisterRequest request) {
         userService.registerUser(request);
         return ResponseEntity.ok("Registered successfully");
     }
