@@ -2,6 +2,7 @@ package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
+import com.adriangniadek.BankingSystem.dto.UserProfileDTO;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.enums.RoleType;
 import com.adriangniadek.BankingSystem.model.User;
@@ -101,5 +102,20 @@ public class UserServiceImpl implements UserService {
         user.setRoles(Set.of(userRole));
 
         userRepository.save(user);
+    }
+
+    @Override
+    public UserProfileDTO getUserProfile(String email) {
+        return null;
+    }
+
+    @Override
+    public UserProfileDTO updateUserProfile(String email, UserProfileDTO userProfileDTO) {
+        return null;
+    }
+
+    @Override
+    public void changePassword(String email, String currentPassword, String newPassword) {
+
     }
 }
