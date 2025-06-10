@@ -106,16 +106,52 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserProfileDTO getUserProfile(String email) {
-        return null;
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        UserProfileDTO userProfileDTO = new UserProfileDTO();
+        userProfileDTO.setId(user.getId());
+        userProfileDTO.setFirstName(user.getFirstName());
+        userProfileDTO.setLastName(user.getLastName());
+        userProfileDTO.setEmail(user.getEmail());
+        userProfileDTO.setPhoneNumber(user.getPhoneNumber());
+
+        return userProfileDTO;
     }
 
     @Override
+    @Transactional
     public UserProfileDTO updateUserProfile(String email, UserProfileDTO userProfileDTO) {
-        return null;
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!user.getEmail().equals(userProfileDTO.getEmail()) &&
+                userRepository.existsByEmail(userProfileDTO.getEmail())) {
+            throw new IllegalArgumentException("Email already in use");
+        }
+
+        user.setFirstName(userProfileDTO.getFirstName());
+        user.setLastName(userProfileDTO.getLastName());
+        user.setEmail(userProfileDTO.getEmail());
+        user.setPhoneNumber(userProfileDTO.getPhoneNumber());
+
+        User updatedUser = userRepository.save(user);
+
+        userProfileDTO.setId(updatedUser.getId());
+        return userProfileDTO;
     }
 
     @Override
+    @Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 }
