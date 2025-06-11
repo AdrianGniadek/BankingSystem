@@ -102,3 +102,108 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
+const token = localStorage.getItem('token');
+
+if (!token) {
+    window.location.href = '/login.html';
+}
+
+function logout() {
+    localStorage.removeItem('token');
+    window.location.href = '/login.html';
+}
+
+function showMessage(title, message) {
+    document.getElementById('messageModalTitle').textContent = title;
+    document.getElementById('messageModalBody').textContent = message;
+    document.getElementById('messageModal').style.display = 'block';
+}
+
+async function loadProfile() {
+    try {
+        const response = await fetch('/api/profile', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Nie udało się załadować danych profilu');
+        }
+
+        const profile = await response.json();
+        document.getElementById('firstName').value = profile.firstName || '';
+        document.getElementById('lastName').value = profile.lastName || '';
+        document.getElementById('email').value = profile.email || '';
+        document.getElementById('phoneNumber').value = profile.phoneNumber || '';
+    } catch (error) {
+        showMessage('Błąd', error.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const profileForm = document.getElementById('profileForm');
+    profileForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const profileData = {
+            firstName: document.getElementById('firstName').value,
+            lastName: document.getElementById('lastName').value,
+            email: document.getElementById('email').value,
+            phoneNumber: document.getElementById('phoneNumber').value
+        };
+
+        try {
+            const response = await fetch('/api/profile', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(profileData)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Nie udało się zaktualizować profilu');
+            }
+
+            showMessage('Sukces', 'Dane profilu zostały zaktualizowane pomyślnie');
+        } catch (error) {
+            showMessage('Błąd', error.message);
+        }
+    });
+
+    const passwordForm = document.getElementById('passwordForm');
+    passwordForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const currentPassword = document.getElementById('currentPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+
+        try {
+            const response = await fetch('/api/profile/change-password', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `currentPassword=${encodeURIComponent(currentPassword)}&newPassword=${encodeURIComponent(newPassword)}`
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.message || 'Nie udało się zmienić hasła');
+            }
+
+            passwordForm.reset();
+            showMessage('Sukces', 'Hasło zostało zmienione pomyślnie');
+        } catch (error) {
+            showMessage('Błąd', error.message);
+        }
+    });
+
+    loadProfile();
+});
+
+

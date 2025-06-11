@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <title>Mój Profil</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<nav>
+    <a href="/">Strona główna</a>
+    <a href="/profile">Mój profil</a>
+    <a href="/accounts">Moje konta</a>
+    <button onclick="logout()">Wyloguj</button>
+</nav>
+
+<div class="container">
+    <h2>Mój profil</h2>
+    <form id="profileForm">
+        <div>
+            <label for="firstName">Imię</label>
+            <input type="text" id="firstName" required />
+        </div>
+        <div>
+            <label for="lastName">Nazwisko</label>
+            <input type="text" id="lastName" required />
+        </div>
+        <div>
+            <label for="email">Email</label>
+            <input type="email" id="email" required />
+        </div>
+        <div>
+            <label for="phoneNumber">Numer telefonu</label>
+            <input type="tel" id="phoneNumber" pattern="[0-9]{9}" required />
+            <small>Wprowadź 9 cyfr bez spacji i myślników</small>
+        </div>
+        <button type="submit">Zapisz zmiany</button>
+    </form>
+
+    <hr />
+
+    <h3>Zmień hasło</h3>
+    <form id="passwordForm">
+        <div>
+            <label for="currentPassword">Aktualne hasło</label>
+            <input type="password" id="currentPassword" required />
+        </div>
+        <div>
+            <label for="newPassword">Nowe hasło</label>
+            <input type="password" id="newPassword" minlength="8" required />
+            <small>Min. 8 znaków</small>
+        </div>
+        <button type="submit">Zmień hasło</button>
+    </form>
+</div>
+
+<!-- Modal -->
+<div id="messageModal" class="modal">
+    <h4 id="messageModalTitle"></h4>
+    <p id="messageModalBody"></p>
+    <button onclick="document.getElementById('messageModal').style.display='none'">Zamknij</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
