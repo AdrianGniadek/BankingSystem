@@ -41,6 +41,8 @@ class TransferRepositoryTest {
         user.setLastName("Doe");
         user.setEmail("john.doe@example.com");
         user.setPassword("password123");
+        user.setPhoneNumber("123456789");
+        user.setPesel("90010112345");
         user.addRole(userRole);
         user = userRepository.save(user);
 
@@ -69,12 +71,12 @@ class TransferRepositoryTest {
         transfer.setStatus("COMPLETED");
         transfer.setCreatedAt(LocalDateTime.now());
 
-        transferRepository.save(transfer);
+        transferRepository.saveAndFlush(transfer);
 
         List<Transfer> result = transferRepository.findBySourceAccountId(sourceAccount.getId());
         
         assertThat(result).isNotEmpty();
         assertThat(result.get(0).getSourceAccount().getId()).isEqualTo(sourceAccount.getId());
-        assertThat(result.get(0).getAmount()).isEqualTo(BigDecimal.valueOf(250));
+        assertThat(result.get(0).getAmount()).isEqualByComparingTo("250.00");
     }
 }

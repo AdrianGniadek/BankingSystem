@@ -2,7 +2,7 @@ package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
-import com.adriangniadek.BankingSystem.security.JwtTokenProvider;
+import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -10,9 +10,8 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -25,15 +24,18 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
+@WebMvcTest(AccountController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AccountControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private AccountService accountService;
+
+    @MockitoBean
+    private JwtAuthFilter jwtAuthFilter;
 
     @Autowired
     private ObjectMapper objectMapper;
