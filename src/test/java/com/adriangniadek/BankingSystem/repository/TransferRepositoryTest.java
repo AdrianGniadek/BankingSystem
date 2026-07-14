@@ -32,9 +32,7 @@ class TransferRepositoryTest {
 
     @Test
     void shouldSaveAndFindTransferBySourceAccountId() {
-        Role userRole = new Role();
-        userRole.setName(RoleType.ROLE_USER);
-        roleRepository.save(userRole);
+        Role userRole = roleRepository.findByName(RoleType.ROLE_USER).orElseThrow();
 
         User user = new User();
         user.setFirstName("John");

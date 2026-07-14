@@ -15,6 +15,7 @@
 	<description>Banking application built with Spring Boot</description>
 	<properties>
 		<java.version>21</java.version>
+		<h2.version>2.2.224</h2.version>
 	</properties>
 	<dependencies>
 		<dependency>
