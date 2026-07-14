@@ -14,7 +14,7 @@ target/
 .sts4-cache
 
 ### IntelliJ IDEA ###
-.idea
+.idea/
 *.iws
 *.iml
 *.ipr
@@ -31,3 +31,14 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Local configuration ###
+.env
+.env.*
+!.env.example
+
+### Temporary files ###
+*~
+*.bak
+*.tmp
+*.log
