@@ -3,15 +3,19 @@ package com.adriangniadek.BankingSystem.controller;
 import com.adriangniadek.BankingSystem.dto.UserProfileDTO;
 import com.adriangniadek.BankingSystem.service.UserService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/profile")
 @RequiredArgsConstructor
+@Validated
 public class UserProfileController {
 
     private final UserService userService;
@@ -31,9 +35,12 @@ public class UserProfileController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<?> changePassword(
-            @RequestParam("currentPassword") String currentPassword,
-            @RequestParam("newPassword") String newPassword) {
+    public ResponseEntity<Void> changePassword(
+            @RequestParam("currentPassword")
+            @NotBlank(message = "Current password is required") String currentPassword,
+            @RequestParam("newPassword")
+            @Size(min = 8, max = 72, message = "New password must be between 8 and 72 characters")
+            String newPassword) {
 
         String email = getCurrentUserEmail();
         userService.changePassword(email, currentPassword, newPassword);

@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Transfer;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
@@ -70,7 +71,7 @@ class TransferServiceImplTest {
         when(accountRepository.findById(1L)).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findById(2L)).thenReturn(Optional.of(targetAccount));
 
-        assertThrows(RuntimeException.class, () -> transferService.createTransfer(transferDTO));
+        assertThrows(BusinessRuleViolationException.class, () -> transferService.createTransfer(transferDTO));
         verify(transferRepository, never()).save(any(Transfer.class));
     }
 

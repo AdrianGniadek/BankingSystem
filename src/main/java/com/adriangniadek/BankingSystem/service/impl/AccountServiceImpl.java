@@ -3,6 +3,8 @@ package com.adriangniadek.BankingSystem.service.impl;
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
+import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Transfer;
 import com.adriangniadek.BankingSystem.model.User;
@@ -29,7 +31,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public AccountDTO createAccount(Long userId, AccountDTO accountDTO) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         Account account = new Account();
         account.setAccountNumber(accountDTO.accountNumber());
@@ -57,14 +59,14 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public BigDecimal getAccountBalance(Long accountId) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
         return account.getBalance();
     }
 
     @Override
     public AccountDTO getAccountById(Long accountId) {
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
         
         return new AccountDTO(
             account.getId(),
@@ -78,8 +80,12 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     public AccountStatementDTO generateAccountStatement(Long accountId, LocalDateTime startDate, LocalDateTime endDate) {
+        if (startDate.isAfter(endDate)) {
+            throw new BusinessRuleViolationException("Start date must not be after end date");
+        }
+
         Account account = accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
         List<Transfer> transfers = transferRepository.findByAccountIdAndDateRange(accountId, startDate, endDate);
 
@@ -131,25 +137,26 @@ public class AccountServiceImpl implements AccountService {
     public TransferDTO transferMoney(Long sourceAccountId, Long targetAccountId, BigDecimal amount,
                                      String currency, String description) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Transfer amount must be greater than zero");
+            throw new BusinessRuleViolationException("Transfer amount must be greater than zero");
         }
 
         if (sourceAccountId.equals(targetAccountId)) {
-            throw new IllegalArgumentException("Source and target accounts cannot be the same");
+            throw new BusinessRuleViolationException("Source and target accounts cannot be the same");
         }
 
         Account sourceAccount = accountRepository.findById(sourceAccountId)
-                .orElseThrow(() -> new RuntimeException("Source account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
 
         Account targetAccount = accountRepository.findById(targetAccountId)
-                .orElseThrow(() -> new RuntimeException("Target account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
 
         if (!sourceAccount.getCurrency().equals(currency) || !targetAccount.getCurrency().equals(currency)) {
-            throw new IllegalArgumentException("Currency mismatch. Transfer currency must match both account currencies");
+            throw new BusinessRuleViolationException(
+                    "Currency mismatch. Transfer currency must match both account currencies");
         }
 
         if (sourceAccount.getBalance().compareTo(amount) < 0) {
-            throw new RuntimeException("Insufficient funds in source account");
+            throw new BusinessRuleViolationException("Insufficient funds in source account");
         }
 
         Transfer transfer = new Transfer();

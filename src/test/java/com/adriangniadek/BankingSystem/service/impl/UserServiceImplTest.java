@@ -2,6 +2,8 @@ package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.enums.RoleType;
+import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
+import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.RoleRepository;
@@ -72,10 +74,10 @@ class UserServiceImplTest {
     void shouldThrowExceptionWhenEmailAlreadyExists() {
         when(userRepository.existsByEmail(userDTO.email())).thenReturn(true);
 
-        Exception exception = assertThrows(IllegalArgumentException.class, () ->
+        Exception exception = assertThrows(ResourceConflictException.class, () ->
                 userService.createUser(userDTO, "password"));
 
-        assertThat(exception.getMessage()).isEqualTo("Email already in use.");
+        assertThat(exception.getMessage()).isEqualTo("Email already in use");
         verify(userRepository, never()).save(any(User.class));
     }
 
@@ -114,7 +116,7 @@ class UserServiceImplTest {
     void shouldThrowExceptionWhenUpdatingNonExistentUser() {
         when(userRepository.findById(2L)).thenReturn(Optional.empty());
 
-        Exception exception = assertThrows(RuntimeException.class, () ->
+        Exception exception = assertThrows(ResourceNotFoundException.class, () ->
                 userService.updateUser(2L, userDTO));
 
         assertThat(exception.getMessage()).isEqualTo("User not found");
@@ -133,7 +135,7 @@ class UserServiceImplTest {
     void shouldThrowExceptionWhenDeletingNonExistentUser() {
         when(userRepository.existsById(2L)).thenReturn(false);
 
-        Exception exception = assertThrows(RuntimeException.class, () ->
+        Exception exception = assertThrows(ResourceNotFoundException.class, () ->
                 userService.deleteUser(2L));
 
         assertThat(exception.getMessage()).isEqualTo("User not found");

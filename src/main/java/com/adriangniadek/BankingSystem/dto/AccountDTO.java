@@ -17,9 +17,10 @@ public record AccountDTO(Long id,
                          BigDecimal balance,
 
                          @NotBlank(message = "Currency is required")
-                         @Size(min = 3, max = 3, message = "Currency must be 3-letter ISO code")
+                         @Pattern(regexp = "[A-Z]{3}", message = "Currency must be a 3-letter uppercase ISO code")
                          String currency,
 
                          @NotNull(message = "User ID is required")
+                         @Positive(message = "User ID must be positive")
                          Long userId) {
 }

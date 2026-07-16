@@ -2,6 +2,7 @@ package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -90,5 +91,47 @@ class AccountControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].amount").value(100));
+    }
+
+    @Test
+    void shouldReturnProblemWhenAccountIsNotFound() throws Exception {
+        Mockito.when(accountService.getAccountBalance(99L))
+                .thenThrow(new ResourceNotFoundException("Account not found"));
+
+        mockMvc.perform(get("/accounts/balance/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Resource not found"))
+                .andExpect(jsonPath("$.detail").value("Account not found"))
+                .andExpect(jsonPath("$.instance").value("/accounts/balance/99"));
+    }
+
+    @Test
+    void shouldReturnValidationErrorsForInvalidAccount() throws Exception {
+        AccountDTO invalidAccount = new AccountDTO(
+                null, "123", "SAVINGS", BigDecimal.valueOf(-1), "pln", 0L);
+
+        mockMvc.perform(post("/accounts/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidAccount)))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.accountNumber").exists())
+                .andExpect(jsonPath("$.errors.balance").exists())
+                .andExpect(jsonPath("$.errors.currency").exists())
+                .andExpect(jsonPath("$.errors.userId").exists());
+    }
+
+    @Test
+    void shouldRejectInvalidTransferAmount() throws Exception {
+        mockMvc.perform(post("/accounts/transfer")
+                        .param("sourceAccountId", "1")
+                        .param("targetAccountId", "2")
+                        .param("amount", "0")
+                        .param("currency", "PLN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Validation failed"));
     }
 }

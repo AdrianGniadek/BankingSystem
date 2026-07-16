@@ -1,6 +1,8 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
+import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Transfer;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
@@ -20,13 +22,13 @@ public class TransferServiceImpl implements TransferService {
     @Override
     public TransferDTO createTransfer(TransferDTO transferDTO) {
         Account source = accountRepository.findById(transferDTO.sourceAccountId())
-                .orElseThrow(() -> new RuntimeException("Source account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
 
         Account target = accountRepository.findById(transferDTO.targetAccountId())
-                .orElseThrow(() -> new RuntimeException("Target account not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
 
         if (source.getBalance().compareTo(transferDTO.amount()) < 0) {
-            throw new RuntimeException("Insufficient funds in the source account");
+            throw new BusinessRuleViolationException("Insufficient funds in the source account");
         }
 
         source.setBalance(source.getBalance().subtract(transferDTO.amount()));

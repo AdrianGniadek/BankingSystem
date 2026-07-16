@@ -3,6 +3,9 @@ package com.adriangniadek.BankingSystem.service.impl;
 import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.dto.UserProfileDTO;
+import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
+import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
+import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.enums.RoleType;
 import com.adriangniadek.BankingSystem.model.User;
@@ -28,7 +31,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO createUser(UserDTO userDTO, String password) {
         if (userRepository.existsByEmail(userDTO.email())) {
-            throw new IllegalArgumentException("Email already in use.");
+            throw new ResourceConflictException("Email already in use");
         }
 
         User user = new User();
@@ -38,7 +41,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(password));
 
         Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> new IllegalStateException("Required USER role is not configured"));
 
         user.setRoles(Set.of(userRole));
         User savedUser = userRepository.save(user);
@@ -62,7 +65,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserDTO updateUser(Long id, UserDTO userDTO) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         user.setFirstName(userDTO.firstName());
         user.setLastName(userDTO.lastName());
@@ -77,7 +80,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void deleteUser(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new RuntimeException("User not found");
+            throw new ResourceNotFoundException("User not found");
         }
         userRepository.deleteById(id);
     }
@@ -86,7 +89,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void registerUser(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email is already registered.");
+            throw new ResourceConflictException("Email is already registered");
         }
 
         User user = new User();
@@ -98,7 +101,7 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.password()));
 
         Role userRole = roleRepository.findByName(RoleType.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> new IllegalStateException("Required USER role is not configured"));
         user.setRoles(Set.of(userRole));
 
         userRepository.save(user);
@@ -107,7 +110,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public UserProfileDTO getUserProfile(String email) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         UserProfileDTO userProfileDTO = new UserProfileDTO();
         userProfileDTO.setId(user.getId());
@@ -123,11 +126,11 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserProfileDTO updateUserProfile(String email, UserProfileDTO userProfileDTO) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!user.getEmail().equals(userProfileDTO.getEmail()) &&
                 userRepository.existsByEmail(userProfileDTO.getEmail())) {
-            throw new IllegalArgumentException("Email already in use");
+            throw new ResourceConflictException("Email already in use");
         }
 
         user.setFirstName(userProfileDTO.getFirstName());
@@ -145,10 +148,10 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void changePassword(String email, String currentPassword, String newPassword) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-            throw new IllegalArgumentException("Current password is incorrect");
+            throw new BusinessRuleViolationException("Current password is incorrect");
         }
 
         user.setPassword(passwordEncoder.encode(newPassword));

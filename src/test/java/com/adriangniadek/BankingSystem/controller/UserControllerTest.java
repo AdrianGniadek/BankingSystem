@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.UserDTO;
+import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
 import com.adriangniadek.BankingSystem.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,5 +63,27 @@ class UserControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.email").value("jan.kowalski@example.com"));
+    }
+
+    @Test
+    void shouldReturnConflictWhenEmailAlreadyExists() throws Exception {
+        UserDTO user = new UserDTO(
+                null,
+                "Jan",
+                "Kowalski",
+                "jan.kowalski@example.com",
+                Set.of("USER")
+        );
+        Mockito.when(userService.createUser(any(UserDTO.class), eq("secret123")))
+                .thenThrow(new ResourceConflictException("Email already in use"));
+
+        mockMvc.perform(post("/users")
+                        .param("password", "secret123")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(user)))
+                .andExpect(status().isConflict())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.title").value("Resource conflict"))
+                .andExpect(jsonPath("$.detail").value("Email already in use"));
     }
 }

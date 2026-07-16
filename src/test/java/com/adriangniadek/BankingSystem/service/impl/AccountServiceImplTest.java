@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
@@ -90,6 +91,6 @@ class AccountServiceImplTest {
     @Test
     void shouldThrowExceptionIfAccountNotFound() {
         when(accountRepository.findById(99L)).thenReturn(Optional.empty());
-        assertThrows(RuntimeException.class, () -> accountService.getAccountBalance(99L));
+        assertThrows(ResourceNotFoundException.class, () -> accountService.getAccountBalance(99L));
     }
 }

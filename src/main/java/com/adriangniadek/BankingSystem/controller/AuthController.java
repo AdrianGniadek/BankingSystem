@@ -24,15 +24,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<JwtResponse> authenticateUser(@RequestBody @Valid LoginRequest request) {
-        try {
-            Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
-            );
-            String token = tokenProvider.generateToken(authentication.getName());
-            return ResponseEntity.ok(new JwtResponse(token));
-        } catch (AuthenticationException e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password())
+        );
+        String token = tokenProvider.generateToken(authentication.getName());
+        return ResponseEntity.ok(new JwtResponse(token));
     }
 
     @PostMapping("/register")
