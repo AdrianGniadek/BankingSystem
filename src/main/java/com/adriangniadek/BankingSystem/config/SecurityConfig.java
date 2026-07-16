@@ -2,9 +2,12 @@ package com.adriangniadek.BankingSystem.config;
 
 import com.adriangniadek.BankingSystem.security.CustomUserDetailsService;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
+import com.adriangniadek.BankingSystem.security.RestAccessDeniedHandler;
+import com.adriangniadek.BankingSystem.security.RestAuthenticationEntryPoint;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -27,17 +30,32 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
     private final CustomUserDetailsService userDetailsService;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
+    private final RestAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/users/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        .requestMatchers("/users/**").hasRole("ADMIN")
                         .requestMatchers("/profile/**").authenticated()
-                        .requestMatchers("/accounts/**", "/transfers/**").hasRole("USER")
-                        .requestMatchers("/", "/index.html", "/login.html", "/accounts.html", "/style.css", "/script.js",  "/register.html").permitAll()
+                        .requestMatchers("/accounts/**", "/transfers/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(
+                                "/",
+                                "/index.html",
+                                "/login.html",
+                                "/register.html",
+                                "/accounts.html",
+                                "/profile.html",
+                                "/style.css",
+                                "/script.js",
+                                "/favicon.ico").permitAll()
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
