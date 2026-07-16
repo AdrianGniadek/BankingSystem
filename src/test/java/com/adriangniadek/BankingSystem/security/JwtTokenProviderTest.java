@@ -31,8 +31,10 @@ class JwtTokenProviderTest {
     @Test
     void shouldRejectModifiedToken() {
         String token = tokenProvider.generateToken("user@example.com");
-        String modifiedToken = token.substring(0, token.length() - 1)
-                + (token.endsWith("a") ? "b" : "a");
+        String[] tokenParts = token.split("\\.");
+        char firstSignatureCharacter = tokenParts[2].charAt(0);
+        tokenParts[2] = (firstSignatureCharacter == 'a' ? 'b' : 'a') + tokenParts[2].substring(1);
+        String modifiedToken = String.join(".", tokenParts);
 
         assertThat(tokenProvider.validateToken(modifiedToken)).isFalse();
     }
