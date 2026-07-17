@@ -9,6 +9,7 @@ import com.adriangniadek.BankingSystem.repository.AccountRepository;
 import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.service.TransferService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,6 +21,7 @@ public class TransferServiceImpl implements TransferService {
     private final AccountRepository accountRepository;
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#transferDTO.sourceAccountId(), authentication)")
     public TransferDTO createTransfer(TransferDTO transferDTO) {
         Account source = accountRepository.findById(transferDTO.sourceAccountId())
                 .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
@@ -47,6 +49,7 @@ public class TransferServiceImpl implements TransferService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public List<TransferDTO> getTransfersForAccount(Long accountId) {
         return transferRepository.findBySourceAccountId(accountId).stream()
                 .map(t -> new TransferDTO(t.getId(), t.getSourceAccount().getId(),

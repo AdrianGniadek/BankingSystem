@@ -6,6 +6,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -40,6 +41,16 @@ public class GlobalExceptionHandler {
     ResponseEntity<ProblemDetail> handleAuthentication(
             AuthenticationException exception, HttpServletRequest request) {
         return response(HttpStatus.UNAUTHORIZED, "Authentication failed", "Invalid email or password", request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ProblemDetail> handleAccessDenied(
+            AccessDeniedException exception, HttpServletRequest request) {
+        return response(
+                HttpStatus.FORBIDDEN,
+                "Access denied",
+                "You do not have permission to access this resource",
+                request);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

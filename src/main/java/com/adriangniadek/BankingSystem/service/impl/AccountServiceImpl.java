@@ -14,6 +14,7 @@ import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -29,6 +30,7 @@ public class AccountServiceImpl implements AccountService {
     private final TransferRepository transferRepository;
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessUser(#userId, authentication)")
     public AccountDTO createAccount(Long userId, AccountDTO accountDTO) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -47,6 +49,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessUser(#userId, authentication)")
     public List<AccountDTO> getUserAccounts(Long userId) {
         return accountRepository.findAll().stream()
                 .filter(account -> account.getUser().getId().equals(userId))
@@ -57,6 +60,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public BigDecimal getAccountBalance(Long accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
@@ -64,6 +68,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public AccountDTO getAccountById(Long accountId) {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
@@ -79,6 +84,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public AccountStatementDTO generateAccountStatement(Long accountId, LocalDateTime startDate, LocalDateTime endDate) {
         if (startDate.isAfter(endDate)) {
             throw new BusinessRuleViolationException("Start date must not be after end date");
@@ -125,6 +131,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public List<TransferDTO> getAccountTransactionHistory(Long accountId) {
         return transferRepository.findBySourceAccountId(accountId).stream()
                 .map(t -> new TransferDTO(t.getId(), t.getSourceAccount().getId(),
@@ -134,6 +141,7 @@ public class AccountServiceImpl implements AccountService {
     }
     @Transactional
     @Override
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#sourceAccountId, authentication)")
     public TransferDTO transferMoney(Long sourceAccountId, Long targetAccountId, BigDecimal amount,
                                      String currency, String description) {
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
