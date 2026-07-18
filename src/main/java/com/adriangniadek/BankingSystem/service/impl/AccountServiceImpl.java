@@ -12,7 +12,6 @@ import com.adriangniadek.BankingSystem.repository.AccountRepository;
 import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.AccountService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -130,68 +129,4 @@ public class AccountServiceImpl implements AccountService {
         );
     }
 
-    @Override
-    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
-    public List<TransferDTO> getAccountTransactionHistory(Long accountId) {
-        return transferRepository.findBySourceAccountId(accountId).stream()
-                .map(t -> new TransferDTO(t.getId(), t.getSourceAccount().getId(),
-                        t.getTargetAccount().getId(), t.getAmount(),
-                        t.getCurrency(), t.getDescription(), t.getStatus(), t.getCreatedAt()))
-                .toList();
-    }
-    @Transactional
-    @Override
-    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#sourceAccountId, authentication)")
-    public TransferDTO transferMoney(Long sourceAccountId, Long targetAccountId, BigDecimal amount,
-                                     String currency, String description) {
-        if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new BusinessRuleViolationException("Transfer amount must be greater than zero");
-        }
-
-        if (sourceAccountId.equals(targetAccountId)) {
-            throw new BusinessRuleViolationException("Source and target accounts cannot be the same");
-        }
-
-        Account sourceAccount = accountRepository.findById(sourceAccountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
-
-        Account targetAccount = accountRepository.findById(targetAccountId)
-                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
-
-        if (!sourceAccount.getCurrency().equals(currency) || !targetAccount.getCurrency().equals(currency)) {
-            throw new BusinessRuleViolationException(
-                    "Currency mismatch. Transfer currency must match both account currencies");
-        }
-
-        if (sourceAccount.getBalance().compareTo(amount) < 0) {
-            throw new BusinessRuleViolationException("Insufficient funds in source account");
-        }
-
-        Transfer transfer = new Transfer();
-        transfer.setSourceAccount(sourceAccount);
-        transfer.setTargetAccount(targetAccount);
-        transfer.setAmount(amount);
-        transfer.setCurrency(currency);
-        transfer.setDescription(description);
-        transfer.setStatus("COMPLETED");
-        transfer.setCreatedAt(LocalDateTime.now());
-
-        sourceAccount.setBalance(sourceAccount.getBalance().subtract(amount));
-        targetAccount.setBalance(targetAccount.getBalance().add(amount));
-
-        accountRepository.save(sourceAccount);
-        accountRepository.save(targetAccount);
-        Transfer savedTransfer = transferRepository.save(transfer);
-
-        return new TransferDTO(
-                savedTransfer.getId(),
-                savedTransfer.getSourceAccount().getId(),
-                savedTransfer.getTargetAccount().getId(),
-                savedTransfer.getAmount(),
-                savedTransfer.getCurrency(),
-                savedTransfer.getDescription(),
-                savedTransfer.getStatus(),
-                savedTransfer.getCreatedAt()
-        );
-    }
 }

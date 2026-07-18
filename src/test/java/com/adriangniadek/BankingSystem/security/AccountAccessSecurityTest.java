@@ -98,23 +98,6 @@ class AccountAccessSecurityTest {
 
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
-    void shouldRejectTransferFromAnotherUsersAccount() throws Exception {
-        mockMvc.perform(post("/accounts/transfer")
-                        .param("sourceAccountId", otherAccount.getId().toString())
-                        .param("targetAccountId", ownerAccount.getId().toString())
-                        .param("amount", "10.00")
-                        .param("currency", "PLN"))
-                .andExpect(status().isForbidden());
-
-        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getBalance())
-                .isEqualByComparingTo("100.00");
-        assertThat(accountRepository.findById(otherAccount.getId()).orElseThrow().getBalance())
-                .isEqualByComparingTo("100.00");
-        assertThat(transferRepository.count()).isZero();
-    }
-
-    @Test
-    @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldRejectTransferEndpointForAnotherUsersSourceAccount() throws Exception {
         String requestBody = """
                 {
@@ -122,8 +105,7 @@ class AccountAccessSecurityTest {
                   "targetAccountId": %d,
                   "amount": 10.00,
                   "currency": "PLN",
-                  "description": "Unauthorized transfer",
-                  "status": "PENDING"
+                  "description": "Unauthorized transfer"
                 }
                 """.formatted(otherAccount.getId(), ownerAccount.getId());
 
@@ -133,6 +115,33 @@ class AccountAccessSecurityTest {
                 .andExpect(status().isForbidden());
 
         assertThat(transferRepository.count()).isZero();
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldCreateTransferFromOwnedAccount() throws Exception {
+        String requestBody = """
+                {
+                  "sourceAccountId": %d,
+                  "targetAccountId": %d,
+                  "amount": 25.00,
+                  "currency": "PLN",
+                  "description": "Authorized transfer"
+                }
+                """.formatted(ownerAccount.getId(), otherAccount.getId());
+
+        mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.createdAt").exists());
+
+        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("75.00");
+        assertThat(accountRepository.findById(otherAccount.getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("125.00");
+        assertThat(transferRepository.count()).isOne();
     }
 
     private User user(String email, String pesel, String phoneNumber, Role role) {

@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
+import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
@@ -11,8 +12,11 @@ import com.adriangniadek.BankingSystem.service.TransferService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -21,40 +25,82 @@ public class TransferServiceImpl implements TransferService {
     private final AccountRepository accountRepository;
 
     @Override
-    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#transferDTO.sourceAccountId(), authentication)")
-    public TransferDTO createTransfer(TransferDTO transferDTO) {
-        Account source = accountRepository.findById(transferDTO.sourceAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Source account not found"));
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#request.sourceAccountId(), authentication)")
+    public TransferDTO createTransfer(CreateTransferRequest request) {
+        validateRequest(request);
 
-        Account target = accountRepository.findById(transferDTO.targetAccountId())
-                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
+        Long firstAccountId = Math.min(request.sourceAccountId(), request.targetAccountId());
+        Long secondAccountId = Math.max(request.sourceAccountId(), request.targetAccountId());
 
-        if (source.getBalance().compareTo(transferDTO.amount()) < 0) {
-            throw new BusinessRuleViolationException("Insufficient funds in the source account");
-        }
+        Account firstAccount = findAccountForUpdate(firstAccountId, request);
+        Account secondAccount = findAccountForUpdate(secondAccountId, request);
+        Account sourceAccount = request.sourceAccountId().equals(firstAccountId) ? firstAccount : secondAccount;
+        Account targetAccount = request.targetAccountId().equals(firstAccountId) ? firstAccount : secondAccount;
 
-        source.setBalance(source.getBalance().subtract(transferDTO.amount()));
-        accountRepository.save(source);
-        target.setBalance(target.getBalance().add(transferDTO.amount()));
-        accountRepository.save(target);
+        validateAccounts(sourceAccount, targetAccount, request);
 
-        Transfer transfer = new Transfer(null, source, target, transferDTO.amount(),
-                transferDTO.currency(), transferDTO.description(), "PENDING",
-                transferDTO.createdAt());
+        sourceAccount.setBalance(sourceAccount.getBalance().subtract(request.amount()));
+        targetAccount.setBalance(targetAccount.getBalance().add(request.amount()));
 
-        Transfer savedTransfer = transferRepository.save(transfer);
-        return new TransferDTO(savedTransfer.getId(), source.getId(), target.getId(),
-                savedTransfer.getAmount(), savedTransfer.getCurrency(),
-                savedTransfer.getDescription(), savedTransfer.getStatus(), savedTransfer.getCreatedAt());
+        Transfer transfer = new Transfer();
+        transfer.setSourceAccount(sourceAccount);
+        transfer.setTargetAccount(targetAccount);
+        transfer.setAmount(request.amount());
+        transfer.setCurrency(request.currency());
+        transfer.setDescription(request.description());
+        transfer.setStatus("COMPLETED");
+        transfer.setCreatedAt(LocalDateTime.now());
+
+        return toDto(transferRepository.save(transfer));
     }
 
     @Override
     @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public List<TransferDTO> getTransfersForAccount(Long accountId) {
-        return transferRepository.findBySourceAccountId(accountId).stream()
-                .map(t -> new TransferDTO(t.getId(), t.getSourceAccount().getId(),
-                        t.getTargetAccount().getId(), t.getAmount(),
-                        t.getCurrency(), t.getDescription(), t.getStatus(), t.getCreatedAt()))
+        return transferRepository
+                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(accountId, accountId)
+                .stream()
+                .map(this::toDto)
                 .toList();
+    }
+
+    private void validateRequest(CreateTransferRequest request) {
+        if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessRuleViolationException("Transfer amount must be greater than zero");
+        }
+        if (request.sourceAccountId().equals(request.targetAccountId())) {
+            throw new BusinessRuleViolationException("Source and target accounts cannot be the same");
+        }
+    }
+
+    private Account findAccountForUpdate(Long accountId, CreateTransferRequest request) {
+        String accountType = accountId.equals(request.sourceAccountId()) ? "Source" : "Target";
+        return accountRepository.findByIdForUpdate(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException(accountType + " account not found"));
+    }
+
+    private void validateAccounts(
+            Account sourceAccount, Account targetAccount, CreateTransferRequest request) {
+        if (!sourceAccount.getCurrency().equals(request.currency())
+                || !targetAccount.getCurrency().equals(request.currency())) {
+            throw new BusinessRuleViolationException(
+                    "Transfer currency must match both account currencies");
+        }
+        if (sourceAccount.getBalance().compareTo(request.amount()) < 0) {
+            throw new BusinessRuleViolationException("Insufficient funds in source account");
+        }
+    }
+
+    private TransferDTO toDto(Transfer transfer) {
+        return new TransferDTO(
+                transfer.getId(),
+                transfer.getSourceAccount().getId(),
+                transfer.getTargetAccount().getId(),
+                transfer.getAmount(),
+                transfer.getCurrency(),
+                transfer.getDescription(),
+                transfer.getStatus(),
+                transfer.getCreatedAt());
     }
 }

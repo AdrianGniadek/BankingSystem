@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.controller;
 
+import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.service.TransferService;
 import jakarta.validation.Valid;
@@ -20,8 +21,8 @@ public class TransferController {
     private final TransferService transferService;
 
     @PostMapping
-    public ResponseEntity<TransferDTO> createTransfer(@RequestBody @Valid TransferDTO transferDTO) {
-        TransferDTO savedTransfer = transferService.createTransfer(transferDTO);
+    public ResponseEntity<TransferDTO> createTransfer(@RequestBody @Valid CreateTransferRequest request) {
+        TransferDTO savedTransfer = transferService.createTransfer(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedTransfer);
     }
 

@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.controller;
 
+import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.security.CustomUserDetailsService;
 import com.adriangniadek.BankingSystem.security.JwtTokenProvider;
@@ -44,15 +45,12 @@ class TransferControllerTest {
 
     @Test
     void shouldCreateTransfer() throws Exception {
-        TransferDTO transferDTO = new TransferDTO(
-                null,
+        CreateTransferRequest request = new CreateTransferRequest(
                 1L,
                 2L,
                 BigDecimal.valueOf(500),
                 "PLN",
-                "Payment",
-                "COMPLETED",
-                LocalDateTime.now()
+                "Payment"
         );
 
         TransferDTO savedTransfer = new TransferDTO(
@@ -81,9 +79,32 @@ class TransferControllerTest {
         mockMvc.perform(post("/transfers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .header("Authorization", "Bearer " + mockToken)
-                        .content(objectMapper.writeValueAsString(transferDTO)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.amount").value(500));
+    }
+
+    @Test
+    void shouldRejectInvalidTransferRequest() throws Exception {
+        String mockToken = "mock-jwt-token";
+        String testEmail = "test@example.com";
+
+        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
+        Mockito.when(userDetailsService.loadUserByUsername(testEmail))
+                .thenReturn(new User(testEmail, "password",
+                        List.of(new SimpleGrantedAuthority("ROLE_USER"))));
+
+        CreateTransferRequest request = new CreateTransferRequest(1L, 2L, BigDecimal.ZERO, "pln", null);
+
+        mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", "Bearer " + mockToken)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.amount").exists())
+                .andExpect(jsonPath("$.errors.currency").exists());
     }
 }

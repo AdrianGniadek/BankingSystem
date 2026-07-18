@@ -1,7 +1,6 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
-import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
 import com.adriangniadek.BankingSystem.service.AccountService;
@@ -16,7 +15,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -78,22 +76,6 @@ class AccountControllerTest {
     }
 
     @Test
-    void shouldReturnTransactionHistory() throws Exception {
-        List<TransferDTO> transfers = List.of(
-                new TransferDTO(1L,1L,2L, BigDecimal.valueOf(100), "USD", "Test transfer",
-                        "COMPLETED", LocalDateTime.parse("2024-04-20T12:00:00")
-                )
-        );
-
-        Mockito.when(accountService.getAccountTransactionHistory(1L)).thenReturn(transfers);
-
-        mockMvc.perform(get("/accounts/transactions/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].amount").value(100));
-    }
-
-    @Test
     void shouldReturnProblemWhenAccountIsNotFound() throws Exception {
         Mockito.when(accountService.getAccountBalance(99L))
                 .thenThrow(new ResourceNotFoundException("Account not found"));
@@ -123,15 +105,4 @@ class AccountControllerTest {
                 .andExpect(jsonPath("$.errors.userId").exists());
     }
 
-    @Test
-    void shouldRejectInvalidTransferAmount() throws Exception {
-        mockMvc.perform(post("/accounts/transfer")
-                        .param("sourceAccountId", "1")
-                        .param("targetAccountId", "2")
-                        .param("amount", "0")
-                        .param("currency", "PLN"))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
-                .andExpect(jsonPath("$.title").value("Validation failed"));
-    }
 }

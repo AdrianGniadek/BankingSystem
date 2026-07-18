@@ -31,7 +31,7 @@ class TransferRepositoryTest {
     private RoleRepository roleRepository;
 
     @Test
-    void shouldSaveAndFindTransferBySourceAccountId() {
+    void shouldFindTransferForSourceAndTargetAccounts() {
         Role userRole = roleRepository.findByName(RoleType.ROLE_USER).orElseThrow();
 
         User user = new User();
@@ -71,10 +71,16 @@ class TransferRepositoryTest {
 
         transferRepository.saveAndFlush(transfer);
 
-        List<Transfer> result = transferRepository.findBySourceAccountId(sourceAccount.getId());
-        
-        assertThat(result).isNotEmpty();
-        assertThat(result.get(0).getSourceAccount().getId()).isEqualTo(sourceAccount.getId());
-        assertThat(result.get(0).getAmount()).isEqualByComparingTo("250.00");
+        List<Transfer> sourceHistory = transferRepository
+                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
+                        sourceAccount.getId(), sourceAccount.getId());
+        List<Transfer> targetHistory = transferRepository
+                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
+                        targetAccount.getId(), targetAccount.getId());
+
+        assertThat(sourceHistory).hasSize(1);
+        assertThat(targetHistory).hasSize(1);
+        assertThat(sourceHistory.getFirst().getAmount()).isEqualByComparingTo("250.00");
+        assertThat(targetHistory.getFirst().getAmount()).isEqualByComparingTo("250.00");
     }
 }

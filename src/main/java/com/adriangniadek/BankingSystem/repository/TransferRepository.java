@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TransferRepository extends JpaRepository<Transfer, Long> {
-    List<Transfer> findBySourceAccountId(Long accountId);
-    List<Transfer> findByTargetAccountId(Long accountId);
+    List<Transfer> findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
+            Long sourceAccountId, Long targetAccountId);
     
     @Query("SELECT t FROM Transfer t WHERE (t.sourceAccount.id = :accountId OR t.targetAccount.id = :accountId) " +
            "AND t.createdAt BETWEEN :startDate AND :endDate ORDER BY t.createdAt")
