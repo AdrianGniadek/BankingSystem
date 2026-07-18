@@ -19,16 +19,4 @@ public class TransferMapper {
                 transfer.getCreatedAt()
         );
     }
-
-    public Transfer toEntity(TransferDTO transferDTO) {
-        Transfer transfer = new Transfer();
-        transfer.setId(transferDTO.id());
-        transfer.setAmount(transferDTO.amount());
-        transfer.setCurrency(transferDTO.currency());
-        transfer.setDescription(transferDTO.description());
-        transfer.setStatus(transferDTO.status());
-        transfer.setCreatedAt(transferDTO.createdAt());
-
-        return transfer;
-    }
 }

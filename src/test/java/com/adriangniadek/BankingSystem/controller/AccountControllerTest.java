@@ -1,6 +1,8 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
+import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
 import com.adriangniadek.BankingSystem.service.AccountService;
@@ -41,21 +43,23 @@ class AccountControllerTest {
 
     @Test
     void shouldCreateAccount() throws Exception {
-        AccountDTO dto = new AccountDTO(1L, "PL123456789", "SAVINGS", BigDecimal.ZERO, "PLN", 1L);
-        Mockito.when(accountService.createAccount(eq(1L), any(AccountDTO.class))).thenReturn(dto);
+        CreateAccountRequest request = new CreateAccountRequest(AccountType.SAVINGS, "PLN");
+        AccountDTO dto = new AccountDTO(
+                1L, "12345678901234567890", AccountType.SAVINGS, BigDecimal.ZERO, "PLN", 1L);
+        Mockito.when(accountService.createAccount(eq(1L), any(CreateAccountRequest.class))).thenReturn(dto);
 
         mockMvc.perform(post("/accounts/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(dto)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.accountNumber").value("PL123456789"));
+                .andExpect(jsonPath("$.accountNumber").value("12345678901234567890"));
     }
 
     @Test
     void shouldReturnUserAccounts() throws Exception {
         List<AccountDTO> accounts = List.of(
-                new AccountDTO(1L, "PL111", "SAVINGS", BigDecimal.valueOf(1000), "PLN", 1L),
-                new AccountDTO(2L, "PL222", "CHECKING", BigDecimal.valueOf(500), "PLN", 1L)
+                new AccountDTO(1L, "PL111", AccountType.SAVINGS, BigDecimal.valueOf(1000), "PLN", 1L),
+                new AccountDTO(2L, "PL222", AccountType.CHECKING, BigDecimal.valueOf(500), "PLN", 1L)
         );
 
         Mockito.when(accountService.getUserAccounts(1L)).thenReturn(accounts);
@@ -90,19 +94,16 @@ class AccountControllerTest {
 
     @Test
     void shouldReturnValidationErrorsForInvalidAccount() throws Exception {
-        AccountDTO invalidAccount = new AccountDTO(
-                null, "123", "SAVINGS", BigDecimal.valueOf(-1), "pln", 0L);
+        CreateAccountRequest invalidRequest = new CreateAccountRequest(null, "pln");
 
         mockMvc.perform(post("/accounts/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidAccount)))
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Validation failed"))
-                .andExpect(jsonPath("$.errors.accountNumber").exists())
-                .andExpect(jsonPath("$.errors.balance").exists())
-                .andExpect(jsonPath("$.errors.currency").exists())
-                .andExpect(jsonPath("$.errors.userId").exists());
+                .andExpect(jsonPath("$.errors.accountType").exists())
+                .andExpect(jsonPath("$.errors.currency").exists());
     }
 
 }

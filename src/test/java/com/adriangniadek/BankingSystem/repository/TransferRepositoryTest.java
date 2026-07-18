@@ -1,6 +1,8 @@
 package com.adriangniadek.BankingSystem.repository;
 
 import com.adriangniadek.BankingSystem.enums.RoleType;
+import com.adriangniadek.BankingSystem.enums.AccountType;
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.model.Transfer;
@@ -46,7 +48,7 @@ class TransferRepositoryTest {
 
         Account sourceAccount = new Account();
         sourceAccount.setAccountNumber("PL123456789");
-        sourceAccount.setAccountType("SAVINGS");
+        sourceAccount.setAccountType(AccountType.SAVINGS);
         sourceAccount.setBalance(BigDecimal.valueOf(1000));
         sourceAccount.setCurrency("PLN");
         sourceAccount.setUser(user);
@@ -54,7 +56,7 @@ class TransferRepositoryTest {
 
         Account targetAccount = new Account();
         targetAccount.setAccountNumber("PL987654321");
-        targetAccount.setAccountType("CHECKING");
+        targetAccount.setAccountType(AccountType.CHECKING);
         targetAccount.setBalance(BigDecimal.valueOf(500));
         targetAccount.setCurrency("PLN");
         targetAccount.setUser(user);
@@ -66,7 +68,7 @@ class TransferRepositoryTest {
         transfer.setAmount(BigDecimal.valueOf(250));
         transfer.setCurrency("PLN");
         transfer.setDescription("Test transfer");
-        transfer.setStatus("COMPLETED");
+        transfer.setStatus(TransferStatus.COMPLETED);
         transfer.setCreatedAt(LocalDateTime.now());
 
         transferRepository.saveAndFlush(transfer);

@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.security;
 
+import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.enums.RoleType;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Role;
@@ -50,6 +51,7 @@ class AccountAccessSecurityTest {
 
     private Account ownerAccount;
     private Account otherAccount;
+    private Long ownerUserId;
     private Long otherUserId;
 
     @BeforeEach
@@ -57,6 +59,7 @@ class AccountAccessSecurityTest {
         Role userRole = roleRepository.findByName(RoleType.ROLE_USER).orElseThrow();
         User owner = userRepository.save(user(
                 "owner@example.com", "12345678901", "123456789", userRole));
+        ownerUserId = owner.getId();
         User other = userRepository.save(user(
                 "other@example.com", "10987654321", "987654321", userRole));
         otherUserId = other.getId();
@@ -71,6 +74,26 @@ class AccountAccessSecurityTest {
         mockMvc.perform(get("/accounts/balance/{accountId}", ownerAccount.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().string("100.00"));
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldCreateAccountWithServerGeneratedValues() throws Exception {
+        String requestBody = """
+                {
+                  "accountType": "SAVINGS",
+                  "currency": "PLN"
+                }
+                """;
+
+        mockMvc.perform(post("/accounts/{userId}", ownerUserId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accountNumber").value(
+                        org.hamcrest.Matchers.matchesPattern("[1-9][0-9]{19}")))
+                .andExpect(jsonPath("$.balance").value(0.0))
+                .andExpect(jsonPath("$.accountType").value("SAVINGS"));
     }
 
     @Test
@@ -159,7 +182,7 @@ class AccountAccessSecurityTest {
     private Account account(String accountNumber, User owner) {
         Account account = new Account();
         account.setAccountNumber(accountNumber);
-        account.setAccountType("CHECKING");
+        account.setAccountType(AccountType.CHECKING);
         account.setBalance(new BigDecimal("100.00"));
         account.setCurrency("PLN");
         account.setUser(owner);

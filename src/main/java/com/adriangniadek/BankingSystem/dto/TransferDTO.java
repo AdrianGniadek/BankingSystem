@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.dto;
 
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,9 +26,7 @@ public record TransferDTO(Long id,
                           @Size(max = 255, message = "Description must not exceed 255 characters")
                           String description,
 
-                          @NotBlank(message = "Status is required")
-                          @Size(max = 20, message = "Status must not exceed 20 characters")
-                          String status,
+                          TransferStatus status,
 
                           LocalDateTime createdAt) {
 }

@@ -3,6 +3,7 @@ package com.adriangniadek.BankingSystem.service.impl;
 import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Transfer;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
@@ -63,7 +64,7 @@ class TransferServiceImplTest {
         TransferDTO result = transferService.createTransfer(request);
 
         assertThat(result.id()).isEqualTo(1L);
-        assertThat(result.status()).isEqualTo("COMPLETED");
+        assertThat(result.status()).isEqualTo(TransferStatus.COMPLETED);
         assertThat(result.createdAt()).isNotNull();
         assertThat(sourceAccount.getBalance()).isEqualByComparingTo("400.00");
         assertThat(targetAccount.getBalance()).isEqualByComparingTo("400.00");
@@ -152,7 +153,7 @@ class TransferServiceImplTest {
                 new BigDecimal(amount),
                 "PLN",
                 "Test transfer",
-                "COMPLETED",
+                TransferStatus.COMPLETED,
                 LocalDateTime.now());
     }
 }

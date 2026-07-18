@@ -2,6 +2,7 @@ package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.security.CustomUserDetailsService;
 import com.adriangniadek.BankingSystem.security.JwtTokenProvider;
 import com.adriangniadek.BankingSystem.service.TransferService;
@@ -60,7 +61,7 @@ class TransferControllerTest {
                 BigDecimal.valueOf(500),
                 "PLN",
                 "Payment",
-                "COMPLETED",
+                TransferStatus.COMPLETED,
                 LocalDateTime.now()
         );
 

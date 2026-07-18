@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.model;
 
+import com.adriangniadek.BankingSystem.enums.AccountType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -20,8 +21,9 @@ public class Account {
     @Column(nullable = false, unique = true, length = 20)
     private String accountNumber;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String accountType;
+    private AccountType accountType;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal balance;

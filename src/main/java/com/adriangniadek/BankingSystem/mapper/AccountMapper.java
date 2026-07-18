@@ -18,15 +18,5 @@ public class AccountMapper {
         );
     }
 
-    public Account toEntity(AccountDTO accountDTO) {
-        Account account = new Account();
-        account.setId(accountDTO.id());
-        account.setAccountNumber(accountDTO.accountNumber());
-        account.setAccountType(accountDTO.accountType());
-        account.setBalance(accountDTO.balance());
-        account.setCurrency(accountDTO.currency());
-
-        return account;
-    }
 }
 

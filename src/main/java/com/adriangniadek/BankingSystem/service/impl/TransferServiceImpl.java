@@ -2,6 +2,7 @@ package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.model.Account;
@@ -49,7 +50,7 @@ public class TransferServiceImpl implements TransferService {
         transfer.setAmount(request.amount());
         transfer.setCurrency(request.currency());
         transfer.setDescription(request.description());
-        transfer.setStatus("COMPLETED");
+        transfer.setStatus(TransferStatus.COMPLETED);
         transfer.setCreatedAt(LocalDateTime.now());
 
         return toDto(transferRepository.save(transfer));

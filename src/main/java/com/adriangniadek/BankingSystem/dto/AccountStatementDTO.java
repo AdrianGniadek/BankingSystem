@@ -1,5 +1,7 @@
 package com.adriangniadek.BankingSystem.dto;
 
+import com.adriangniadek.BankingSystem.enums.AccountType;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -7,7 +9,7 @@ import java.util.List;
 public record AccountStatementDTO(
     Long accountId,
     String accountNumber,
-    String accountType,
+    AccountType accountType,
     String currency,
     LocalDateTime startDate,
     LocalDateTime endDate,

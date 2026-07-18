@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.model;
 
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,8 +36,9 @@ public class Transfer {
     @Column(length = 255)
     private String description;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status;
+    private TransferStatus status;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
