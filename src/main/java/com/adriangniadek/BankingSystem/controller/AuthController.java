@@ -1,17 +1,21 @@
 package com.adriangniadek.BankingSystem.controller;
 
+import com.adriangniadek.BankingSystem.dto.JwtResponse;
 import com.adriangniadek.BankingSystem.dto.LoginRequest;
 import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.security.JwtTokenProvider;
 import com.adriangniadek.BankingSystem.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.*;
-import org.springframework.security.authentication.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.web.bind.annotation.*;
-import com.adriangniadek.BankingSystem.dto.JwtResponse;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
@@ -32,8 +36,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody @Valid RegisterRequest request) {
-        userService.registerUser(request);
-        return ResponseEntity.ok("Registered successfully");
+    public ResponseEntity<Void> register(@RequestBody @Valid RegisterRequest request) {
+        userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }

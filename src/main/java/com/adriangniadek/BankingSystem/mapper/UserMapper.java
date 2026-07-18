@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.mapper;
 
 import com.adriangniadek.BankingSystem.dto.UserDTO;
+import com.adriangniadek.BankingSystem.dto.UserProfileDTO;
 import com.adriangniadek.BankingSystem.model.User;
 import org.springframework.stereotype.Component;
 
@@ -21,13 +22,13 @@ public class UserMapper {
         );
     }
 
-    public User toEntity(UserDTO userDTO) {
-        User user = new User();
-        user.setId(userDTO.id());
-        user.setFirstName(userDTO.firstName());
-        user.setLastName(userDTO.lastName());
-        user.setEmail(userDTO.email());
-
-        return user;
+    public UserProfileDTO toProfileDto(User user) {
+        return new UserProfileDTO(
+                user.getId(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getEmail(),
+                user.getPhoneNumber()
+        );
     }
 }

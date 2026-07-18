@@ -1,20 +1,20 @@
 package com.adriangniadek.BankingSystem.service;
 
+import com.adriangniadek.BankingSystem.dto.ChangePasswordRequest;
 import com.adriangniadek.BankingSystem.dto.RegisterRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateUserProfileRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateUserRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.dto.UserProfileDTO;
-import com.adriangniadek.BankingSystem.model.User;
+
 import java.util.List;
-import java.util.Optional;
 
 public interface UserService {
-    UserDTO createUser(UserDTO userDTO, String password);
-    Optional<User> findByEmail(String email);
+    UserDTO createUser(RegisterRequest request);
     List<UserDTO> getAllUsers();
-    UserDTO updateUser(Long id, UserDTO userDTO);
+    UserDTO updateUser(Long id, UpdateUserRequest request);
     void deleteUser(Long id);
-    void registerUser(RegisterRequest request);
     UserProfileDTO getUserProfile(String email);
-    UserProfileDTO updateUserProfile(String email, UserProfileDTO userProfileDTO);
-    void changePassword(String email, String currentPassword, String newPassword);
+    UserProfileDTO updateUserProfile(String email, UpdateUserProfileRequest request);
+    void changePassword(String email, ChangePasswordRequest request);
 }

@@ -1,10 +1,11 @@
 package com.adriangniadek.BankingSystem.controller;
 
+import com.adriangniadek.BankingSystem.dto.RegisterRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateUserRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.service.UserService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,14 +22,8 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    public ResponseEntity<UserDTO> createUser(@RequestBody @Valid UserDTO userDTO,
-                                              @RequestParam("password")
-                                              @Size(
-                                                      min = 8,
-                                                      max = 72,
-                                                      message = "Password must be between 8 and 72 characters")
-                                              String password) {
-        UserDTO savedUser = userService.createUser(userDTO, password);
+    public ResponseEntity<UserDTO> createUser(@RequestBody @Valid RegisterRequest request) {
+        UserDTO savedUser = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedUser);
     }
 
@@ -41,8 +36,8 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable @Positive(message = "User ID must be positive") Long id,
-            @RequestBody @Valid UserDTO userDTO) {
-        UserDTO updatedUser = userService.updateUser(id, userDTO);
+            @RequestBody @Valid UpdateUserRequest request) {
+        UserDTO updatedUser = userService.updateUser(id, request);
         return ResponseEntity.ok(updatedUser);
     }
 
