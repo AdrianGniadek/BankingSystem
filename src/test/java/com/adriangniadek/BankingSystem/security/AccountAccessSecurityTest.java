@@ -98,6 +98,36 @@ class AccountAccessSecurityTest {
 
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldReturnAccountsForCurrentUser() throws Exception {
+        mockMvc.perform(get("/accounts/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(ownerAccount.getId()))
+                .andExpect(jsonPath("$[0].userId").value(ownerUserId));
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldCreateAccountForCurrentUser() throws Exception {
+        String requestBody = """
+                {
+                  "accountType": "SAVINGS",
+                  "currency": "EUR"
+                }
+                """;
+
+        mockMvc.perform(post("/accounts/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(ownerUserId))
+                .andExpect(jsonPath("$.currency").value("EUR"));
+
+        assertThat(accountRepository.findByUserEmail("owner@example.com")).hasSize(2);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldRejectAccessToAnotherUsersAccount() throws Exception {
         mockMvc.perform(get("/accounts/balance/{accountId}", otherAccount.getId()))
                 .andExpect(status().isForbidden())

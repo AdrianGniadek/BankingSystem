@@ -35,19 +35,30 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
+    @PreAuthorize("authentication.name == #email")
+    public AccountDTO createCurrentUserAccount(String email, CreateAccountRequest request) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        return createAccount(user, request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @PreAuthorize("authentication.name == #email")
+    public List<AccountDTO> getCurrentUserAccounts(String email) {
+        return accountRepository.findByUserEmail(email).stream()
+                .map(accountMapper::toDto)
+                .toList();
+    }
+
+    @Override
+    @Transactional
     @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessUser(#userId, authentication)")
     public AccountDTO createAccount(Long userId, CreateAccountRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Account account = new Account();
-        account.setAccountNumber(generateUniqueAccountNumber());
-        account.setAccountType(request.accountType());
-        account.setBalance(BigDecimal.ZERO.setScale(2));
-        account.setCurrency(request.currency());
-        account.setUser(user);
-
-        return accountMapper.toDto(accountRepository.save(account));
+        return createAccount(user, request);
     }
 
     @Override
@@ -128,6 +139,17 @@ public class AccountServiceImpl implements AccountService {
             accountNumber = accountNumberGenerator.generate();
         } while (accountRepository.findByAccountNumber(accountNumber).isPresent());
         return accountNumber;
+    }
+
+    private AccountDTO createAccount(User user, CreateAccountRequest request) {
+        Account account = new Account();
+        account.setAccountNumber(generateUniqueAccountNumber());
+        account.setAccountType(request.accountType());
+        account.setBalance(BigDecimal.ZERO.setScale(2));
+        account.setCurrency(request.currency());
+        account.setUser(user);
+
+        return accountMapper.toDto(accountRepository.save(account));
     }
 
 }

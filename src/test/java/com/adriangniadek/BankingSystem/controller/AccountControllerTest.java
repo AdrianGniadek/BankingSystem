@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,6 +30,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class AccountControllerTest {
 
+    private static final String EMAIL = "john@example.com";
+    private static final TestingAuthenticationToken AUTHENTICATION =
+            new TestingAuthenticationToken(EMAIL, null);
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -40,6 +45,35 @@ class AccountControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Test
+    void shouldCreateAccountForCurrentUser() throws Exception {
+        CreateAccountRequest request = new CreateAccountRequest(AccountType.CHECKING, "PLN");
+        AccountDTO account = new AccountDTO(
+                1L, "12345678901234567890", AccountType.CHECKING, BigDecimal.ZERO, "PLN", 1L);
+        Mockito.when(accountService.createCurrentUserAccount(eq(EMAIL), any(CreateAccountRequest.class)))
+                .thenReturn(account);
+
+        mockMvc.perform(post("/accounts/me")
+                        .principal(AUTHENTICATION)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accountNumber").value("12345678901234567890"));
+    }
+
+    @Test
+    void shouldReturnCurrentUserAccounts() throws Exception {
+        Mockito.when(accountService.getCurrentUserAccounts(EMAIL)).thenReturn(List.of(
+                new AccountDTO(
+                        1L, "12345678901234567890", AccountType.CHECKING,
+                        BigDecimal.ZERO, "PLN", 1L)));
+
+        mockMvc.perform(get("/accounts/me").principal(AUTHENTICATION))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].currency").value("PLN"));
+    }
 
     @Test
     void shouldCreateAccount() throws Exception {

@@ -94,6 +94,31 @@ class AccountServiceImplTest {
     }
 
     @Test
+    void shouldCreateAccountForCurrentUser() {
+        CreateAccountRequest request = new CreateAccountRequest(AccountType.CHECKING, "PLN");
+        when(userRepository.findByEmail(testUser.getEmail())).thenReturn(Optional.of(testUser));
+        when(accountNumberGenerator.generate()).thenReturn("12345678901234567890");
+        when(accountRepository.findByAccountNumber("12345678901234567890")).thenReturn(Optional.empty());
+        when(accountRepository.save(any(Account.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AccountDTO createdAccount = accountService.createCurrentUserAccount(testUser.getEmail(), request);
+
+        assertThat(createdAccount.userId()).isEqualTo(testUser.getId());
+        assertThat(createdAccount.accountType()).isEqualTo(AccountType.CHECKING);
+        verify(userRepository).findByEmail(testUser.getEmail());
+    }
+
+    @Test
+    void shouldRejectCurrentAccountCreationForMissingUser() {
+        when(userRepository.findByEmail("missing@example.com")).thenReturn(Optional.empty());
+
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> accountService.createCurrentUserAccount(
+                        "missing@example.com", new CreateAccountRequest(AccountType.CHECKING, "PLN")));
+    }
+
+    @Test
     void shouldGenerateAnotherNumberWhenFirstAlreadyExists() {
         CreateAccountRequest request = new CreateAccountRequest(AccountType.CHECKING, "PLN");
         when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
@@ -119,6 +144,18 @@ class AccountServiceImplTest {
         assertThat(accounts).hasSize(1);
         assertThat(accounts.getFirst().accountNumber()).isEqualTo("12345678901234567890");
         verify(accountRepository).findByUserId(1L);
+    }
+
+    @Test
+    void shouldGetCurrentUserAccountsByEmail() {
+        when(accountRepository.findByUserEmail(testUser.getEmail())).thenReturn(List.of(testAccount));
+
+        List<AccountDTO> accounts = accountService.getCurrentUserAccounts(testUser.getEmail());
+
+        assertThat(accounts).singleElement()
+                .extracting(AccountDTO::accountNumber)
+                .isEqualTo(testAccount.getAccountNumber());
+        verify(accountRepository).findByUserEmail(testUser.getEmail());
     }
 
     @Test
