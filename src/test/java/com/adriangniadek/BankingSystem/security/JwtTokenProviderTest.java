@@ -1,8 +1,10 @@
 package com.adriangniadek.BankingSystem.security;
 
+import com.adriangniadek.BankingSystem.config.JwtProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
+
+import java.time.Duration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -12,12 +14,10 @@ class JwtTokenProviderTest {
 
     @BeforeEach
     void setUp() {
-        tokenProvider = new JwtTokenProvider();
-        ReflectionTestUtils.setField(
-                tokenProvider,
-                "secret",
-                "test-only-signing-key-must-be-at-least-32-bytes-long-for-hs256");
-        ReflectionTestUtils.setField(tokenProvider, "jwtExpirationInMs", 3_600_000L);
+        var properties = new JwtProperties(
+                "test-only-signing-key-must-be-at-least-32-bytes-long-for-hs256",
+                Duration.ofHours(1));
+        tokenProvider = new JwtTokenProvider(properties);
     }
 
     @Test
