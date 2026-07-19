@@ -1,8 +1,10 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
+import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -36,6 +38,15 @@ public class AccountController {
     @GetMapping("/me")
     public ResponseEntity<List<AccountDTO>> getCurrentUserAccounts(Authentication authentication) {
         return ResponseEntity.ok(accountService.getCurrentUserAccounts(authentication.getName()));
+    }
+
+    @PostMapping("/{accountId}/deposits")
+    public ResponseEntity<AccountEntryDTO> deposit(
+            @PathVariable @Positive(message = "Account ID must be positive") Long accountId,
+            @RequestBody @Valid CreateDepositRequest request,
+            Authentication authentication) {
+        AccountEntryDTO entry = accountService.deposit(accountId, request, authentication.getName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(entry);
     }
 
     @PostMapping("/{userId}")

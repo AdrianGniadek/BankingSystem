@@ -10,6 +10,8 @@ import com.adriangniadek.BankingSystem.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -85,19 +87,18 @@ class TransferRepositoryTest {
         transferRepository.saveAndFlush(failedTransfer);
 
         List<Transfer> sourceHistory = transferRepository
-                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
-                        sourceAccount.getId(), sourceAccount.getId());
+                .findBySourceAccountIdOrTargetAccountId(
+                        sourceAccount.getId(), sourceAccount.getId(),
+                        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .getContent();
         List<Transfer> targetHistory = transferRepository
-                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
-                        targetAccount.getId(), targetAccount.getId());
-        List<Transfer> completedTransfers = transferRepository.findByAccountIdFromDate(
-                sourceAccount.getId(), transferTime.minusSeconds(1), TransferStatus.COMPLETED);
-
+                .findBySourceAccountIdOrTargetAccountId(
+                        targetAccount.getId(), targetAccount.getId(),
+                        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .getContent();
         assertThat(sourceHistory).hasSize(2);
         assertThat(targetHistory).hasSize(2);
         assertThat(sourceHistory).extracting(Transfer::getStatus)
                 .containsExactly(TransferStatus.FAILED, TransferStatus.COMPLETED);
-        assertThat(completedTransfers).hasSize(1);
-        assertThat(completedTransfers.getFirst().getAmount()).isEqualByComparingTo("250.00");
     }
 }

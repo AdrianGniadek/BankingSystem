@@ -1,18 +1,20 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
+import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
+import com.adriangniadek.BankingSystem.enums.AccountEntryType;
 import com.adriangniadek.BankingSystem.enums.AccountType;
-import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
+import com.adriangniadek.BankingSystem.mapper.AccountEntryMapper;
 import com.adriangniadek.BankingSystem.mapper.AccountMapper;
-import com.adriangniadek.BankingSystem.mapper.TransferMapper;
 import com.adriangniadek.BankingSystem.model.Account;
-import com.adriangniadek.BankingSystem.model.Transfer;
+import com.adriangniadek.BankingSystem.model.AccountEntry;
 import com.adriangniadek.BankingSystem.model.User;
+import com.adriangniadek.BankingSystem.repository.AccountEntryRepository;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
-import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.AccountNumberGenerator;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,12 +27,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 class AccountServiceImplTest {
@@ -42,7 +46,7 @@ class AccountServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
-    private TransferRepository transferRepository;
+    private AccountEntryRepository accountEntryRepository;
 
     @Mock
     private AccountNumberGenerator accountNumberGenerator;
@@ -57,9 +61,9 @@ class AccountServiceImplTest {
         accountService = new AccountServiceImpl(
                 accountRepository,
                 userRepository,
-                transferRepository,
+                accountEntryRepository,
                 new AccountMapper(),
-                new TransferMapper(),
+                new AccountEntryMapper(),
                 accountNumberGenerator);
 
         testUser = new User();
@@ -182,23 +186,61 @@ class AccountServiceImplTest {
     }
 
     @Test
+    void shouldDepositFundsAndCreateAuditEntry() {
+        CreateDepositRequest request = new CreateDepositRequest(
+                UUID.randomUUID(), new BigDecimal("250.00"), "USD", "Cash deposit");
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+        when(accountEntryRepository.save(any(AccountEntry.class))).thenAnswer(invocation -> {
+            AccountEntry entry = invocation.getArgument(0);
+            entry.setId(1L);
+            return entry;
+        });
+
+        AccountEntryDTO result = accountService.deposit(
+                testAccount.getId(), request, "admin@example.com");
+
+        assertThat(testAccount.getBalance()).isEqualByComparingTo("1250.00");
+        assertThat(result.type()).isEqualTo(AccountEntryType.DEPOSIT);
+
+        ArgumentCaptor<AccountEntry> entryCaptor = ArgumentCaptor.forClass(AccountEntry.class);
+        verify(accountEntryRepository).save(entryCaptor.capture());
+        assertThat(entryCaptor.getValue().getCreatedBy()).isEqualTo("admin@example.com");
+        assertThat(entryCaptor.getValue().getIdempotencyKey())
+                .isEqualTo(request.idempotencyKey().toString());
+    }
+
+    @Test
+    void shouldReturnExistingDepositWithoutChangingBalanceAgain() {
+        CreateDepositRequest request = new CreateDepositRequest(
+                UUID.randomUUID(), new BigDecimal("250.00"), "USD", "Cash deposit");
+        AccountEntry existingEntry = entry(
+                1L, AccountEntryType.DEPOSIT, "250.00", LocalDateTime.now());
+        existingEntry.setDescription(request.description());
+        existingEntry.setIdempotencyKey(request.idempotencyKey().toString());
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+        when(accountEntryRepository.findByIdempotencyKey(request.idempotencyKey().toString()))
+                .thenReturn(Optional.of(existingEntry));
+
+        accountService.deposit(testAccount.getId(), request, "admin@example.com");
+
+        assertThat(testAccount.getBalance()).isEqualByComparingTo("1000.00");
+        verify(accountEntryRepository, never()).save(any());
+    }
+
+    @Test
     void shouldCalculateHistoricalStatementBalances() {
         LocalDateTime startDate = LocalDateTime.of(2026, 1, 1, 0, 0);
         LocalDateTime endDate = LocalDateTime.of(2026, 1, 31, 23, 59);
-        Account otherAccount = new Account();
-        otherAccount.setId(2L);
-
         testAccount.setBalance(new BigDecimal("130.00"));
-        Transfer outgoingInRange = transfer(
-                1L, testAccount, otherAccount, "20.00", startDate.plusDays(5));
-        Transfer incomingInRange = transfer(
-                2L, otherAccount, testAccount, "50.00", startDate.plusDays(10));
-        Transfer outgoingAfterRange = transfer(
-                3L, testAccount, otherAccount, "10.00", endDate.plusDays(1));
+        AccountEntry outgoingInRange = entry(
+                1L, AccountEntryType.TRANSFER_OUT, "20.00", startDate.plusDays(5));
+        AccountEntry incomingInRange = entry(
+                2L, AccountEntryType.TRANSFER_IN, "50.00", startDate.plusDays(10));
+        AccountEntry outgoingAfterRange = entry(
+                3L, AccountEntryType.TRANSFER_OUT, "10.00", endDate.plusDays(1));
 
         when(accountRepository.findById(testAccount.getId())).thenReturn(Optional.of(testAccount));
-        when(transferRepository.findByAccountIdFromDate(
-                testAccount.getId(), startDate, TransferStatus.COMPLETED))
+        when(accountEntryRepository.findByAccountIdFromDate(testAccount.getId(), startDate))
                 .thenReturn(List.of(outgoingInRange, incomingInRange, outgoingAfterRange));
 
         AccountStatementDTO statement = accountService.generateAccountStatement(
@@ -206,7 +248,7 @@ class AccountServiceImplTest {
 
         assertThat(statement.openingBalance()).isEqualByComparingTo("110.00");
         assertThat(statement.closingBalance()).isEqualByComparingTo("140.00");
-        assertThat(statement.transactions()).extracting(transferDto -> transferDto.id())
+        assertThat(statement.entries()).extracting(AccountEntryDTO::id)
                 .containsExactly(1L, 2L);
     }
 
@@ -221,21 +263,16 @@ class AccountServiceImplTest {
                 .hasMessage("Start date must not be after end date");
     }
 
-    private Transfer transfer(
-            Long id,
-            Account sourceAccount,
-            Account targetAccount,
-            String amount,
-            LocalDateTime createdAt) {
-        Transfer transfer = new Transfer();
-        transfer.setId(id);
-        transfer.setSourceAccount(sourceAccount);
-        transfer.setTargetAccount(targetAccount);
-        transfer.setAmount(new BigDecimal(amount));
-        transfer.setCurrency("USD");
-        transfer.setDescription("Test transfer");
-        transfer.setStatus(TransferStatus.COMPLETED);
-        transfer.setCreatedAt(createdAt);
-        return transfer;
+    private AccountEntry entry(
+            Long id, AccountEntryType type, String amount, LocalDateTime createdAt) {
+        AccountEntry entry = new AccountEntry();
+        entry.setId(id);
+        entry.setAccount(testAccount);
+        entry.setType(type);
+        entry.setAmount(new BigDecimal(amount));
+        entry.setCurrency("USD");
+        entry.setDescription("Test operation");
+        entry.setCreatedAt(createdAt);
+        return entry;
     }
 }

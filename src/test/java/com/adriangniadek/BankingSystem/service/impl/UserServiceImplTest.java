@@ -23,6 +23,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Optional;
@@ -118,11 +120,12 @@ class UserServiceImplTest {
 
     @Test
     void shouldReturnAllUsers() {
-        when(userRepository.findAll()).thenReturn(List.of(user));
+        when(userRepository.findAll(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(user)));
 
-        List<UserDTO> users = userService.getAllUsers();
+        var users = userService.getAllUsers(0, 20);
 
-        assertThat(users).singleElement().extracting(UserDTO::email).isEqualTo(user.getEmail());
+        assertThat(users.content()).singleElement().extracting(UserDTO::email).isEqualTo(user.getEmail());
+        assertThat(users.totalElements()).isEqualTo(1);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.service.impl;
 
 import com.adriangniadek.BankingSystem.dto.ChangePasswordRequest;
+import com.adriangniadek.BankingSystem.dto.PageResponse;
 import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.dto.UpdateUserProfileRequest;
 import com.adriangniadek.BankingSystem.dto.UpdateUserRequest;
@@ -17,11 +18,12 @@ import com.adriangniadek.BankingSystem.repository.RoleRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Set;
 
 @Service
@@ -60,10 +62,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserDTO> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(userMapper::toDto)
-                .toList();
+    public PageResponse<UserDTO> getAllUsers(int page, int size) {
+        return PageResponse.from(userRepository.findAll(
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")))
+                .map(userMapper::toDto));
     }
 
     @Override

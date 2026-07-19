@@ -4,23 +4,14 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record CreateTransferRequest(
+public record CreateDepositRequest(
         @NotNull(message = "Idempotency key is required")
         UUID idempotencyKey,
-
-        @NotNull(message = "Source account ID is required")
-        @Positive(message = "Source account ID must be positive")
-        Long sourceAccountId,
-
-        @NotNull(message = "Target account ID is required")
-        @Positive(message = "Target account ID must be positive")
-        Long targetAccountId,
 
         @NotNull(message = "Amount is required")
         @DecimalMin(value = "0.01", message = "Amount must be at least 0.01")
@@ -30,6 +21,8 @@ public record CreateTransferRequest(
         @Pattern(regexp = "[A-Z]{3}", message = "Currency must be a 3-letter uppercase ISO code")
         String currency,
 
+        @NotBlank(message = "Description is required")
         @Size(max = 255, message = "Description must not exceed 255 characters")
-        String description) {
+        String description
+) {
 }

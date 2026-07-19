@@ -15,6 +15,6 @@ public record AccountStatementDTO(
     LocalDateTime endDate,
     BigDecimal openingBalance,
     BigDecimal closingBalance,
-    List<TransferDTO> transactions
+    List<AccountEntryDTO> entries
 ) {
 }

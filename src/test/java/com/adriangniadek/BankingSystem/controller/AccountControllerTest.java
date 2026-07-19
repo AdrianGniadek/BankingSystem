@@ -1,7 +1,10 @@
 package com.adriangniadek.BankingSystem.controller;
 
 import com.adriangniadek.BankingSystem.dto.AccountDTO;
+import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
+import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
+import com.adriangniadek.BankingSystem.enums.AccountEntryType;
 import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
@@ -18,7 +21,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
@@ -73,6 +78,29 @@ class AccountControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].currency").value("PLN"));
+    }
+
+    @Test
+    void shouldDepositFunds() throws Exception {
+        CreateDepositRequest request = new CreateDepositRequest(
+                UUID.randomUUID(), new BigDecimal("100.00"), "PLN", "Cash deposit");
+        AccountEntryDTO entry = new AccountEntryDTO(
+                1L,
+                AccountEntryType.DEPOSIT,
+                request.amount(),
+                request.currency(),
+                request.description(),
+                LocalDateTime.now(),
+                null);
+        Mockito.when(accountService.deposit(eq(1L), eq(request), eq(EMAIL))).thenReturn(entry);
+
+        mockMvc.perform(post("/accounts/1/deposits")
+                        .principal(AUTHENTICATION)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("DEPOSIT"))
+                .andExpect(jsonPath("$.amount").value(100.0));
     }
 
     @Test

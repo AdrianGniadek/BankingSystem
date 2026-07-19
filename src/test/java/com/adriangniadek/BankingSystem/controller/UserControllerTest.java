@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.controller;
 
+import com.adriangniadek.BankingSystem.dto.PageResponse;
 import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
@@ -15,9 +16,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -36,6 +39,20 @@ class UserControllerTest {
 
     @MockitoBean
     private JwtAuthFilter jwtAuthFilter;
+
+    @Test
+    void shouldReturnPaginatedUsers() throws Exception {
+        UserDTO user = new UserDTO(
+                1L, "Jan", "Kowalski", "jan@example.com", Set.of("ROLE_USER"));
+        Mockito.when(userService.getAllUsers(0, 20))
+                .thenReturn(new PageResponse<>(List.of(user), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].email").value("jan@example.com"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
 
     @Test
     void shouldCreateUserSuccessfully() throws Exception {
