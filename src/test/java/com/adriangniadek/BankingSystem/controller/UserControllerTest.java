@@ -1,5 +1,7 @@
 package com.adriangniadek.BankingSystem.controller;
 
+import com.adriangniadek.BankingSystem.dto.PageResponse;
+import com.adriangniadek.BankingSystem.dto.RegisterRequest;
 import com.adriangniadek.BankingSystem.dto.UserDTO;
 import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
@@ -14,10 +16,11 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -38,28 +41,42 @@ class UserControllerTest {
     private JwtAuthFilter jwtAuthFilter;
 
     @Test
-    void shouldCreateUserSuccessfully() throws Exception {
+    void shouldReturnPaginatedUsers() throws Exception {
         UserDTO user = new UserDTO(
-                null,
+                1L, "Jan", "Kowalski", "jan@example.com", Set.of("ROLE_USER"));
+        Mockito.when(userService.getAllUsers(0, 20))
+                .thenReturn(new PageResponse<>(List.of(user), 0, 20, 1, 1));
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].email").value("jan@example.com"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void shouldCreateUserSuccessfully() throws Exception {
+        RegisterRequest request = new RegisterRequest(
                 "Jan",
                 "Kowalski",
                 "jan.kowalski@example.com",
-                Set.of("USER")
+                "secret123",
+                "90010112345",
+                "123456789"
         );
 
         UserDTO savedUser = new UserDTO(
                 1L,
-                user.firstName(),
-                user.lastName(),
-                user.email(),
+                request.firstName(),
+                request.lastName(),
+                request.email(),
                 Set.of("ROLE_USER")
         );
-        Mockito.when(userService.createUser(any(UserDTO.class), eq("secret123"))).thenReturn(savedUser);
+        Mockito.when(userService.createUser(any(RegisterRequest.class))).thenReturn(savedUser);
 
         mockMvc.perform(post("/users")
-                        .param("password", "secret123")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.email").value("jan.kowalski@example.com"));
@@ -67,23 +84,23 @@ class UserControllerTest {
 
     @Test
     void shouldReturnConflictWhenEmailAlreadyExists() throws Exception {
-        UserDTO user = new UserDTO(
-                null,
+        RegisterRequest request = new RegisterRequest(
                 "Jan",
                 "Kowalski",
                 "jan.kowalski@example.com",
-                Set.of("USER")
+                "secret123",
+                "90010112345",
+                "123456789"
         );
-        Mockito.when(userService.createUser(any(UserDTO.class), eq("secret123")))
-                .thenThrow(new ResourceConflictException("Email already in use"));
+        Mockito.when(userService.createUser(any(RegisterRequest.class)))
+                .thenThrow(new ResourceConflictException("Email is already registered"));
 
         mockMvc.perform(post("/users")
-                        .param("password", "secret123")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(user)))
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isConflict())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Resource conflict"))
-                .andExpect(jsonPath("$.detail").value("Email already in use"));
+                .andExpect(jsonPath("$.detail").value("Email is already registered"));
     }
 }

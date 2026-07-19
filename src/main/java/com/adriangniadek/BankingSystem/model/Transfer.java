@@ -42,4 +42,7 @@ public class Transfer {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(length = 36, unique = true)
+    private String idempotencyKey;
 }

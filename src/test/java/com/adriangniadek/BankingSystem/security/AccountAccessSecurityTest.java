@@ -6,6 +6,7 @@ import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
+import com.adriangniadek.BankingSystem.repository.AccountEntryRepository;
 import com.adriangniadek.BankingSystem.repository.RoleRepository;
 import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
@@ -20,7 +21,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -45,6 +48,9 @@ class AccountAccessSecurityTest {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private AccountEntryRepository accountEntryRepository;
 
     @Autowired
     private TransferRepository transferRepository;
@@ -98,6 +104,36 @@ class AccountAccessSecurityTest {
 
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldReturnAccountsForCurrentUser() throws Exception {
+        mockMvc.perform(get("/accounts/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
+                .andExpect(jsonPath("$[0].id").value(ownerAccount.getId()))
+                .andExpect(jsonPath("$[0].userId").value(ownerUserId));
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldCreateAccountForCurrentUser() throws Exception {
+        String requestBody = """
+                {
+                  "accountType": "SAVINGS",
+                  "currency": "EUR"
+                }
+                """;
+
+        mockMvc.perform(post("/accounts/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.userId").value(ownerUserId))
+                .andExpect(jsonPath("$.currency").value("EUR"));
+
+        assertThat(accountRepository.findByUserEmail("owner@example.com")).hasSize(2);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldRejectAccessToAnotherUsersAccount() throws Exception {
         mockMvc.perform(get("/accounts/balance/{accountId}", otherAccount.getId()))
                 .andExpect(status().isForbidden())
@@ -124,13 +160,14 @@ class AccountAccessSecurityTest {
     void shouldRejectTransferEndpointForAnotherUsersSourceAccount() throws Exception {
         String requestBody = """
                 {
+                  "idempotencyKey": "%s",
                   "sourceAccountId": %d,
                   "targetAccountId": %d,
                   "amount": 10.00,
                   "currency": "PLN",
                   "description": "Unauthorized transfer"
                 }
-                """.formatted(otherAccount.getId(), ownerAccount.getId());
+                """.formatted(UUID.randomUUID(), otherAccount.getId(), ownerAccount.getId());
 
         mockMvc.perform(post("/transfers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -142,16 +179,18 @@ class AccountAccessSecurityTest {
 
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
-    void shouldCreateTransferFromOwnedAccount() throws Exception {
+    void shouldCreateTransferOnlyOnceWhenRequestIsRepeated() throws Exception {
+        UUID idempotencyKey = UUID.randomUUID();
         String requestBody = """
                 {
+                  "idempotencyKey": "%s",
                   "sourceAccountId": %d,
                   "targetAccountId": %d,
                   "amount": 25.00,
                   "currency": "PLN",
                   "description": "Authorized transfer"
                 }
-                """.formatted(ownerAccount.getId(), otherAccount.getId());
+                """.formatted(idempotencyKey, ownerAccount.getId(), otherAccount.getId());
 
         mockMvc.perform(post("/transfers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,11 +199,70 @@ class AccountAccessSecurityTest {
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
                 .andExpect(jsonPath("$.createdAt").exists());
 
+        mockMvc.perform(post("/transfers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated());
+
         assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("75.00");
         assertThat(accountRepository.findById(otherAccount.getId()).orElseThrow().getBalance())
                 .isEqualByComparingTo("125.00");
         assertThat(transferRepository.count()).isOne();
+        assertThat(accountEntryRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+    void shouldAllowAdministratorToDepositFunds() throws Exception {
+        LocalDateTime statementStart = LocalDateTime.now().minusMinutes(1);
+        String requestBody = """
+                {
+                  "idempotencyKey": "%s",
+                  "amount": 50.00,
+                  "currency": "PLN",
+                  "description": "Cash deposit"
+                }
+                """.formatted(UUID.randomUUID());
+
+        mockMvc.perform(post("/accounts/{accountId}/deposits", ownerAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("DEPOSIT"))
+                .andExpect(jsonPath("$.amount").value(50.0));
+
+        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("150.00");
+        assertThat(accountEntryRepository.count()).isOne();
+
+        mockMvc.perform(get("/accounts/statement/{accountId}", ownerAccount.getId())
+                        .param("startDate", statementStart.toString())
+                        .param("endDate", LocalDateTime.now().plusMinutes(1).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openingBalance").value(100.0))
+                .andExpect(jsonPath("$.closingBalance").value(150.0))
+                .andExpect(jsonPath("$.entries[0].type").value("DEPOSIT"));
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldRejectUserDeposit() throws Exception {
+        String requestBody = """
+                {
+                  "idempotencyKey": "%s",
+                  "amount": 50.00,
+                  "currency": "PLN",
+                  "description": "Unauthorized deposit"
+                }
+                """.formatted(UUID.randomUUID());
+
+        mockMvc.perform(post("/accounts/{accountId}/deposits", ownerAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isForbidden());
+
+        assertThat(accountEntryRepository.count()).isZero();
     }
 
     private User user(String email, String pesel, String phoneNumber, Role role) {

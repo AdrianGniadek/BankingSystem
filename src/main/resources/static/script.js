@@ -102,14 +102,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 });
 
-const token = localStorage.getItem('token');
+const token = localStorage.getItem('jwt');
 
-if (!token) {
+if (!token && window.location.pathname.endsWith('/profile.html')) {
     window.location.href = '/login.html';
 }
 
 function logout() {
-    localStorage.removeItem('token');
+    localStorage.removeItem('jwt');
     window.location.href = '/login.html';
 }
 
@@ -121,7 +121,7 @@ function showMessage(title, message) {
 
 async function loadProfile() {
     try {
-        const response = await fetch('/api/profile', {
+        const response = await fetch('/profile', {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
@@ -144,17 +144,19 @@ async function loadProfile() {
 
 document.addEventListener('DOMContentLoaded', function () {
     const profileForm = document.getElementById('profileForm');
+    if (!profileForm) {
+        return;
+    }
     profileForm.addEventListener('submit', async function (e) {
         e.preventDefault();
         const profileData = {
             firstName: document.getElementById('firstName').value,
             lastName: document.getElementById('lastName').value,
-            email: document.getElementById('email').value,
             phoneNumber: document.getElementById('phoneNumber').value
         };
 
         try {
-            const response = await fetch('/api/profile', {
+            const response = await fetch('/profile', {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -165,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Nie udało się zaktualizować profilu');
+                throw new Error(error.detail || 'Nie udało się zaktualizować profilu');
             }
 
             showMessage('Sukces', 'Dane profilu zostały zaktualizowane pomyślnie');
@@ -182,18 +184,18 @@ document.addEventListener('DOMContentLoaded', function () {
         const newPassword = document.getElementById('newPassword').value;
 
         try {
-            const response = await fetch('/api/profile/change-password', {
+            const response = await fetch('/profile/change-password', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Content-Type': 'application/json'
                 },
-                body: `currentPassword=${encodeURIComponent(currentPassword)}&newPassword=${encodeURIComponent(newPassword)}`
+                body: JSON.stringify({ currentPassword, newPassword })
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.message || 'Nie udało się zmienić hasła');
+                throw new Error(error.detail || 'Nie udało się zmienić hasła');
             }
 
             passwordForm.reset();

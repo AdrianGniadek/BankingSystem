@@ -10,6 +10,8 @@ import com.adriangniadek.BankingSystem.model.User;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -69,20 +71,34 @@ class TransferRepositoryTest {
         transfer.setCurrency("PLN");
         transfer.setDescription("Test transfer");
         transfer.setStatus(TransferStatus.COMPLETED);
-        transfer.setCreatedAt(LocalDateTime.now());
+        LocalDateTime transferTime = LocalDateTime.now();
+        transfer.setCreatedAt(transferTime);
 
         transferRepository.saveAndFlush(transfer);
 
-        List<Transfer> sourceHistory = transferRepository
-                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
-                        sourceAccount.getId(), sourceAccount.getId());
-        List<Transfer> targetHistory = transferRepository
-                .findBySourceAccountIdOrTargetAccountIdOrderByCreatedAtDesc(
-                        targetAccount.getId(), targetAccount.getId());
+        Transfer failedTransfer = new Transfer();
+        failedTransfer.setSourceAccount(sourceAccount);
+        failedTransfer.setTargetAccount(targetAccount);
+        failedTransfer.setAmount(BigDecimal.TEN);
+        failedTransfer.setCurrency("PLN");
+        failedTransfer.setDescription("Failed transfer");
+        failedTransfer.setStatus(TransferStatus.FAILED);
+        failedTransfer.setCreatedAt(transferTime.plusSeconds(1));
+        transferRepository.saveAndFlush(failedTransfer);
 
-        assertThat(sourceHistory).hasSize(1);
-        assertThat(targetHistory).hasSize(1);
-        assertThat(sourceHistory.getFirst().getAmount()).isEqualByComparingTo("250.00");
-        assertThat(targetHistory.getFirst().getAmount()).isEqualByComparingTo("250.00");
+        List<Transfer> sourceHistory = transferRepository
+                .findBySourceAccountIdOrTargetAccountId(
+                        sourceAccount.getId(), sourceAccount.getId(),
+                        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .getContent();
+        List<Transfer> targetHistory = transferRepository
+                .findBySourceAccountIdOrTargetAccountId(
+                        targetAccount.getId(), targetAccount.getId(),
+                        PageRequest.of(0, 20, Sort.by(Sort.Direction.DESC, "createdAt")))
+                .getContent();
+        assertThat(sourceHistory).hasSize(2);
+        assertThat(targetHistory).hasSize(2);
+        assertThat(sourceHistory).extracting(Transfer::getStatus)
+                .containsExactly(TransferStatus.FAILED, TransferStatus.COMPLETED);
     }
 }
