@@ -4,9 +4,11 @@ import com.adriangniadek.BankingSystem.dto.AccountDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
+import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.mapper.AccountMapper;
+import com.adriangniadek.BankingSystem.mapper.TransferMapper;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.Transfer;
 import com.adriangniadek.BankingSystem.model.User;
@@ -31,6 +33,7 @@ public class AccountServiceImpl implements AccountService {
     private final UserRepository userRepository;
     private final TransferRepository transferRepository;
     private final AccountMapper accountMapper;
+    private final TransferMapper transferMapper;
     private final AccountNumberGenerator accountNumberGenerator;
 
     @Override
@@ -87,6 +90,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
     public AccountStatementDTO generateAccountStatement(Long accountId, LocalDateTime startDate, LocalDateTime endDate) {
         if (startDate.isAfter(endDate)) {
@@ -96,28 +100,20 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
-        List<Transfer> transfers = transferRepository.findByAccountIdAndDateRange(accountId, startDate, endDate);
+        List<Transfer> transfersFromStart = transferRepository.findByAccountIdFromDate(
+                accountId, startDate, TransferStatus.COMPLETED);
 
-        BigDecimal openingBalance = account.getBalance();
-        
-        for (Transfer transfer : transfers) {
-            if (transfer.getSourceAccount().getId().equals(accountId)) {
-                openingBalance = openingBalance.add(transfer.getAmount());
-            } else if (transfer.getTargetAccount().getId().equals(accountId)) {
-                openingBalance = openingBalance.subtract(transfer.getAmount());
-            }
-        }
+        BigDecimal openingBalance = reverseTransfers(account.getBalance(), transfersFromStart, accountId);
+        BigDecimal closingBalance = reverseTransfers(
+                account.getBalance(),
+                transfersFromStart.stream()
+                        .filter(transfer -> transfer.getCreatedAt().isAfter(endDate))
+                        .toList(),
+                accountId);
 
-        List<TransferDTO> transferDTOs = transfers.stream()
-                .map(t -> new TransferDTO(
-                        t.getId(),
-                        t.getSourceAccount().getId(),
-                        t.getTargetAccount().getId(),
-                        t.getAmount(),
-                        t.getCurrency(),
-                        t.getDescription(),
-                        t.getStatus(),
-                        t.getCreatedAt()))
+        List<TransferDTO> transferDTOs = transfersFromStart.stream()
+                .filter(transfer -> !transfer.getCreatedAt().isAfter(endDate))
+                .map(transferMapper::toDto)
                 .toList();
         
         return new AccountStatementDTO(
@@ -128,7 +124,7 @@ public class AccountServiceImpl implements AccountService {
                 startDate,
                 endDate,
                 openingBalance,
-                account.getBalance(),
+                closingBalance,
                 transferDTOs
         );
     }
@@ -150,6 +146,18 @@ public class AccountServiceImpl implements AccountService {
         account.setUser(user);
 
         return accountMapper.toDto(accountRepository.save(account));
+    }
+
+    private BigDecimal reverseTransfers(BigDecimal balance, List<Transfer> transfers, Long accountId) {
+        BigDecimal historicalBalance = balance;
+        for (Transfer transfer : transfers) {
+            if (transfer.getSourceAccount().getId().equals(accountId)) {
+                historicalBalance = historicalBalance.add(transfer.getAmount());
+            } else {
+                historicalBalance = historicalBalance.subtract(transfer.getAmount());
+            }
+        }
+        return historicalBalance;
     }
 
 }
