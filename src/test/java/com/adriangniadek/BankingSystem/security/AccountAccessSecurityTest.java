@@ -1,5 +1,6 @@
 package com.adriangniadek.BankingSystem.security;
 
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.enums.RoleType;
 import com.adriangniadek.BankingSystem.model.Account;
@@ -27,6 +28,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -265,6 +268,57 @@ class AccountAccessSecurityTest {
         assertThat(accountEntryRepository.count()).isZero();
     }
 
+    @Test
+    @WithMockUser(username = "admin@example.com", roles = "ADMIN")
+    void shouldAllowAdministratorToBlockAccount() throws Exception {
+        mockMvc.perform(patch("/accounts/{accountId}/status", ownerAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"BLOCKED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("BLOCKED"));
+
+        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getStatus())
+                .isEqualTo(AccountStatus.BLOCKED);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldRejectUserAccountStatusUpdate() throws Exception {
+        mockMvc.perform(patch("/accounts/{accountId}/status", ownerAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"BLOCKED\"}"))
+                .andExpect(status().isForbidden());
+
+        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getStatus())
+                .isEqualTo(AccountStatus.ACTIVE);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldAllowOwnerToCloseEmptyAccount() throws Exception {
+        ownerAccount.setBalance(BigDecimal.ZERO.setScale(2));
+        accountRepository.saveAndFlush(ownerAccount);
+
+        mockMvc.perform(delete("/accounts/{accountId}", ownerAccount.getId()))
+                .andExpect(status().isNoContent());
+
+        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getStatus())
+                .isEqualTo(AccountStatus.CLOSED);
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldRejectClosingAnotherUsersAccount() throws Exception {
+        otherAccount.setBalance(BigDecimal.ZERO.setScale(2));
+        accountRepository.saveAndFlush(otherAccount);
+
+        mockMvc.perform(delete("/accounts/{accountId}", otherAccount.getId()))
+                .andExpect(status().isForbidden());
+
+        assertThat(accountRepository.findById(otherAccount.getId()).orElseThrow().getStatus())
+                .isEqualTo(AccountStatus.ACTIVE);
+    }
+
     private User user(String email, String pesel, String phoneNumber, Role role) {
         User user = new User();
         user.setFirstName("Test");
@@ -283,6 +337,7 @@ class AccountAccessSecurityTest {
         account.setAccountType(AccountType.CHECKING);
         account.setBalance(new BigDecimal("100.00"));
         account.setCurrency("PLN");
+        account.setStatus(AccountStatus.ACTIVE);
         account.setUser(owner);
         return account;
     }

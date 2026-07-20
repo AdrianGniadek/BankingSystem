@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.model;
 
 import com.adriangniadek.BankingSystem.enums.AccountType;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -30,6 +31,10 @@ public class Account {
 
     @Column(nullable = false, length = 3)
     private String currency;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private AccountStatus status = AccountStatus.ACTIVE;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)

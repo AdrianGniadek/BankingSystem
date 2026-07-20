@@ -5,6 +5,7 @@ import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
 import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateAccountStatusRequest;
 import com.adriangniadek.BankingSystem.service.AccountService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -86,6 +87,20 @@ public class AccountController {
         
         AccountStatementDTO statement = accountService.generateAccountStatement(accountId, startDate, endDate);
         return ResponseEntity.ok(statement);
+    }
+
+    @PatchMapping("/{accountId}/status")
+    public ResponseEntity<AccountDTO> updateAccountStatus(
+            @PathVariable @Positive(message = "Account ID must be positive") Long accountId,
+            @RequestBody @Valid UpdateAccountStatusRequest request) {
+        return ResponseEntity.ok(accountService.updateAccountStatus(accountId, request));
+    }
+
+    @DeleteMapping("/{accountId}")
+    public ResponseEntity<Void> closeAccount(
+            @PathVariable @Positive(message = "Account ID must be positive") Long accountId) {
+        accountService.closeAccount(accountId);
+        return ResponseEntity.noContent().build();
     }
 
 }

@@ -26,4 +26,4 @@ jobs:
           cache: maven
 
       - name: Verify application
-        run: ./mvnw --batch-mode --no-transfer-progress clean verify
+        run: ./mvnw --batch-mode --no-transfer-progress clean verify -Pintegration-tests

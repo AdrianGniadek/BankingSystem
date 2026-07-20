@@ -5,6 +5,7 @@ import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
 import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateAccountStatusRequest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,4 +19,6 @@ public interface AccountService {
     BigDecimal getAccountBalance(Long accountId);
     AccountDTO getAccountById(Long accountId);
     AccountStatementDTO generateAccountStatement(Long accountId, LocalDateTime startDate, LocalDateTime endDate);
+    AccountDTO updateAccountStatus(Long accountId, UpdateAccountStatusRequest request);
+    void closeAccount(Long accountId);
 }
