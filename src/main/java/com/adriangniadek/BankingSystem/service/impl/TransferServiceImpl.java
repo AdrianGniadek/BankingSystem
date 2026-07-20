@@ -4,6 +4,7 @@ import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.PageResponse;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.enums.AccountEntryType;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
@@ -113,6 +114,12 @@ public class TransferServiceImpl implements TransferService {
 
     private void validateAccounts(
             Account sourceAccount, Account targetAccount, CreateTransferRequest request) {
+        if (sourceAccount.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessRuleViolationException("Source account must be active");
+        }
+        if (targetAccount.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessRuleViolationException("Target account must be active");
+        }
         if (!sourceAccount.getCurrency().equals(request.currency())
                 || !targetAccount.getCurrency().equals(request.currency())) {
             throw new BusinessRuleViolationException(

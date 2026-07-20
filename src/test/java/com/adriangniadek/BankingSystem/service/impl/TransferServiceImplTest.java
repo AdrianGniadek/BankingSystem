@@ -4,6 +4,7 @@ import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
 import com.adriangniadek.BankingSystem.dto.PageResponse;
 import com.adriangniadek.BankingSystem.dto.TransferDTO;
 import com.adriangniadek.BankingSystem.enums.AccountEntryType;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.TransferStatus;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
@@ -160,6 +161,28 @@ class TransferServiceImplTest {
     }
 
     @Test
+    void shouldRejectTransferFromBlockedAccount() {
+        sourceAccount.setStatus(AccountStatus.BLOCKED);
+        CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
+        mockLockedAccounts();
+
+        assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessage("Source account must be active");
+    }
+
+    @Test
+    void shouldRejectTransferToClosedAccount() {
+        targetAccount.setStatus(AccountStatus.CLOSED);
+        CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
+        mockLockedAccounts();
+
+        assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessage("Target account must be active");
+    }
+
+    @Test
     void shouldRejectTransferToSameAccountBeforeLocking() {
         CreateTransferRequest request = request(1L, 1L, "100.00", "PLN");
 
@@ -197,6 +220,7 @@ class TransferServiceImplTest {
         account.setId(id);
         account.setBalance(new BigDecimal(balance));
         account.setCurrency(currency);
+        account.setStatus(AccountStatus.ACTIVE);
         return account;
     }
 

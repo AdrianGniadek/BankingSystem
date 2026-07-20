@@ -5,8 +5,11 @@ import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
 import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateAccountStatusRequest;
 import com.adriangniadek.BankingSystem.enums.AccountEntryType;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.AccountType;
+import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.mapper.AccountEntryMapper;
 import com.adriangniadek.BankingSystem.mapper.AccountMapper;
@@ -78,6 +81,7 @@ class AccountServiceImplTest {
         testAccount.setAccountType(AccountType.SAVINGS);
         testAccount.setBalance(new BigDecimal("1000.00"));
         testAccount.setCurrency("USD");
+        testAccount.setStatus(AccountStatus.ACTIVE);
         testAccount.setUser(testUser);
     }
 
@@ -98,6 +102,7 @@ class AccountServiceImplTest {
         assertThat(createdAccount.accountNumber()).isEqualTo("12345678901234567890");
         assertThat(createdAccount.accountType()).isEqualTo(AccountType.SAVINGS);
         assertThat(createdAccount.balance()).isEqualByComparingTo("0.00");
+        assertThat(createdAccount.status()).isEqualTo(AccountStatus.ACTIVE);
 
         ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
         verify(accountRepository).save(accountCaptor.capture());
@@ -225,6 +230,73 @@ class AccountServiceImplTest {
 
         assertThat(testAccount.getBalance()).isEqualByComparingTo("1000.00");
         verify(accountEntryRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldRejectDepositToBlockedAccount() {
+        testAccount.setStatus(AccountStatus.BLOCKED);
+        CreateDepositRequest request = new CreateDepositRequest(
+                UUID.randomUUID(), new BigDecimal("250.00"), "USD", "Cash deposit");
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+
+        assertThatThrownBy(() -> accountService.deposit(
+                testAccount.getId(), request, "admin@example.com"))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessage("Deposits require an active account");
+
+        verify(accountEntryRepository, never()).save(any());
+    }
+
+    @Test
+    void shouldBlockActiveAccount() {
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+
+        AccountDTO result = accountService.updateAccountStatus(
+                testAccount.getId(), new UpdateAccountStatusRequest(AccountStatus.BLOCKED));
+
+        assertThat(result.status()).isEqualTo(AccountStatus.BLOCKED);
+        assertThat(testAccount.getStatus()).isEqualTo(AccountStatus.BLOCKED);
+    }
+
+    @Test
+    void shouldRejectClosedStatusInAdministrativeUpdate() {
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+
+        assertThatThrownBy(() -> accountService.updateAccountStatus(
+                testAccount.getId(), new UpdateAccountStatusRequest(AccountStatus.CLOSED)))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessage("Closed status can only be set by closing the account");
+    }
+
+    @Test
+    void shouldRejectReopeningClosedAccount() {
+        testAccount.setStatus(AccountStatus.CLOSED);
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+
+        assertThatThrownBy(() -> accountService.updateAccountStatus(
+                testAccount.getId(), new UpdateAccountStatusRequest(AccountStatus.ACTIVE)))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessage("Closed account status cannot be changed");
+    }
+
+    @Test
+    void shouldCloseAccountWithZeroBalance() {
+        testAccount.setBalance(BigDecimal.ZERO.setScale(2));
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+
+        accountService.closeAccount(testAccount.getId());
+
+        assertThat(testAccount.getStatus()).isEqualTo(AccountStatus.CLOSED);
+    }
+
+    @Test
+    void shouldRejectClosingAccountWithRemainingBalance() {
+        when(accountRepository.findByIdForUpdate(testAccount.getId())).thenReturn(Optional.of(testAccount));
+
+        assertThatThrownBy(() -> accountService.closeAccount(testAccount.getId()))
+                .isInstanceOf(BusinessRuleViolationException.class)
+                .hasMessage("Account balance must be zero before closing");
+        assertThat(testAccount.getStatus()).isEqualTo(AccountStatus.ACTIVE);
     }
 
     @Test

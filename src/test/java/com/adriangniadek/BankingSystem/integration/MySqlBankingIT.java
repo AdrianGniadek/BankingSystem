@@ -1,6 +1,7 @@
 package com.adriangniadek.BankingSystem.integration;
 
 import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.model.Account;
@@ -9,6 +10,7 @@ import com.adriangniadek.BankingSystem.repository.AccountEntryRepository;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
 import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
+import com.adriangniadek.BankingSystem.service.AccountService;
 import com.adriangniadek.BankingSystem.service.TransferService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
@@ -66,6 +68,9 @@ class MySqlBankingIT {
     @Autowired
     private TransferService transferService;
 
+    @Autowired
+    private AccountService accountService;
+
     @BeforeEach
     void cleanBusinessData() {
         accountEntryRepository.deleteAllInBatch();
@@ -89,7 +94,7 @@ class MySqlBankingIT {
                         + "WHERE table_schema = DATABASE() AND table_name = 'account_entries'",
                 Integer.class);
 
-        assertThat(versions).containsExactly("1", "2");
+        assertThat(versions).containsExactly("1", "2", "3");
         assertThat(roleCount).isEqualTo(2);
         assertThat(ledgerTableCount).isEqualTo(1);
     }
@@ -108,19 +113,19 @@ class MySqlBankingIT {
         ExecutorService executor = Executors.newFixedThreadPool(2);
 
         try {
-            Future<TransferAttempt> first = executor.submit(
+            Future<OperationAttempt> first = executor.submit(
                     () -> executeTransferAsAdmin(firstRequest, ready, start));
-            Future<TransferAttempt> second = executor.submit(
+            Future<OperationAttempt> second = executor.submit(
                     () -> executeTransferAsAdmin(secondRequest, ready, start));
 
             assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
             start.countDown();
 
-            List<TransferAttempt> attempts = List.of(
+            List<OperationAttempt> attempts = List.of(
                     first.get(15, TimeUnit.SECONDS),
                     second.get(15, TimeUnit.SECONDS));
 
-            assertThat(attempts).filteredOn(TransferAttempt::successful).hasSize(1);
+            assertThat(attempts).filteredOn(OperationAttempt::successful).hasSize(1);
             assertThat(attempts).filteredOn(attempt -> !attempt.successful()).singleElement()
                     .satisfies(attempt -> assertThat(attempt.failure())
                             .isInstanceOf(BusinessRuleViolationException.class)
@@ -142,8 +147,84 @@ class MySqlBankingIT {
         assertThat(accountEntryRepository.count()).isEqualTo(2);
     }
 
-    private TransferAttempt executeTransferAsAdmin(
+    @RepeatedTest(5)
+    void shouldKeepClosedAccountEmptyWhenClosureRacesWithIncomingTransfer() throws Exception {
+        User owner = userRepository.saveAndFlush(user());
+        Account closingAccount = accountRepository.saveAndFlush(
+                account(owner, "20000000000000000001", "0.00"));
+        Account fundingAccount = accountRepository.saveAndFlush(
+                account(owner, "20000000000000000002", "100.00"));
+        CreateTransferRequest request = new CreateTransferRequest(
+                UUID.randomUUID(),
+                fundingAccount.getId(),
+                closingAccount.getId(),
+                new BigDecimal("10.00"),
+                "PLN",
+                "Concurrent closure transfer");
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch start = new CountDownLatch(1);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        try {
+            Future<OperationAttempt> transfer = executor.submit(
+                    () -> executeAsAdmin(
+                            () -> transferService.createTransfer(
+                                    request, "integration-admin@example.com"),
+                            ready,
+                            start));
+            Future<OperationAttempt> closure = executor.submit(
+                    () -> executeAsAdmin(
+                            () -> accountService.closeAccount(closingAccount.getId()),
+                            ready,
+                            start));
+
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+
+            List<OperationAttempt> attempts = List.of(
+                    transfer.get(15, TimeUnit.SECONDS),
+                    closure.get(15, TimeUnit.SECONDS));
+
+            assertThat(attempts).filteredOn(OperationAttempt::successful).hasSize(1);
+            assertThat(attempts).filteredOn(attempt -> !attempt.successful()).singleElement()
+                    .satisfies(attempt -> {
+                        assertThat(attempt.failure())
+                                .isInstanceOf(BusinessRuleViolationException.class);
+                        assertThat(attempt.failure().getMessage()).isIn(
+                                "Target account must be active",
+                                "Account balance must be zero before closing");
+                    });
+        } finally {
+            start.countDown();
+            executor.shutdownNow();
+            assertThat(executor.awaitTermination(10, TimeUnit.SECONDS)).isTrue();
+        }
+
+        Account updatedAccount = accountRepository.findById(closingAccount.getId()).orElseThrow();
+        if (updatedAccount.getStatus() == AccountStatus.CLOSED) {
+            assertThat(updatedAccount.getBalance()).isEqualByComparingTo("0.00");
+            assertThat(transferRepository.count()).isZero();
+            assertThat(accountEntryRepository.count()).isZero();
+        } else {
+            assertThat(updatedAccount.getStatus()).isEqualTo(AccountStatus.ACTIVE);
+            assertThat(updatedAccount.getBalance()).isEqualByComparingTo("10.00");
+            assertThat(transferRepository.count()).isOne();
+            assertThat(accountEntryRepository.count()).isEqualTo(2);
+        }
+    }
+
+    private OperationAttempt executeTransferAsAdmin(
             CreateTransferRequest request,
+            CountDownLatch ready,
+            CountDownLatch start) throws InterruptedException {
+        return executeAsAdmin(
+                () -> transferService.createTransfer(request, "integration-admin@example.com"),
+                ready,
+                start);
+    }
+
+    private OperationAttempt executeAsAdmin(
+            Runnable operation,
             CountDownLatch ready,
             CountDownLatch start) throws InterruptedException {
         SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
@@ -156,12 +237,13 @@ class MySqlBankingIT {
 
         try {
             if (!start.await(10, TimeUnit.SECONDS)) {
-                return TransferAttempt.failed(new IllegalStateException("Concurrent transfer start timed out"));
+                return OperationAttempt.failed(
+                        new IllegalStateException("Concurrent operation start timed out"));
             }
-            transferService.createTransfer(request, "integration-admin@example.com");
-            return TransferAttempt.succeeded();
+            operation.run();
+            return OperationAttempt.succeeded();
         } catch (RuntimeException exception) {
-            return TransferAttempt.failed(exception);
+            return OperationAttempt.failed(exception);
         } finally {
             SecurityContextHolder.clearContext();
         }
@@ -198,13 +280,13 @@ class MySqlBankingIT {
                 "Concurrent integration transfer");
     }
 
-    private record TransferAttempt(boolean successful, RuntimeException failure) {
-        static TransferAttempt succeeded() {
-            return new TransferAttempt(true, null);
+    private record OperationAttempt(boolean successful, RuntimeException failure) {
+        static OperationAttempt succeeded() {
+            return new OperationAttempt(true, null);
         }
 
-        static TransferAttempt failed(RuntimeException failure) {
-            return new TransferAttempt(false, failure);
+        static OperationAttempt failed(RuntimeException failure) {
+            return new OperationAttempt(false, failure);
         }
     }
 }

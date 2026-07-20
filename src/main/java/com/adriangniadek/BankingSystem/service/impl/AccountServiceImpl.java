@@ -5,7 +5,9 @@ import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.AccountStatementDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
 import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
+import com.adriangniadek.BankingSystem.dto.UpdateAccountStatusRequest;
 import com.adriangniadek.BankingSystem.enums.AccountEntryType;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
 import com.adriangniadek.BankingSystem.exception.ResourceConflictException;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
@@ -80,6 +82,8 @@ public class AccountServiceImpl implements AccountService {
             validateRepeatedDeposit(existingEntry, accountId, request);
             return accountEntryMapper.toDto(existingEntry);
         }
+
+        requireActiveAccount(account, "Deposits require an active account");
 
         if (!account.getCurrency().equals(request.currency())) {
             throw new BusinessRuleViolationException("Deposit currency must match account currency");
@@ -164,6 +168,43 @@ public class AccountServiceImpl implements AccountService {
         );
     }
 
+    @Override
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN')")
+    public AccountDTO updateAccountStatus(Long accountId, UpdateAccountStatusRequest request) {
+        Account account = accountRepository.findByIdForUpdate(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (request.status() == AccountStatus.CLOSED) {
+            throw new BusinessRuleViolationException(
+                    "Closed status can only be set by closing the account");
+        }
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            throw new BusinessRuleViolationException("Closed account status cannot be changed");
+        }
+
+        account.setStatus(request.status());
+        return accountMapper.toDto(account);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessAccount(#accountId, authentication)")
+    public void closeAccount(Long accountId) {
+        Account account = accountRepository.findByIdForUpdate(accountId)
+                .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
+
+        if (account.getStatus() == AccountStatus.CLOSED) {
+            return;
+        }
+        if (account.getBalance().compareTo(BigDecimal.ZERO) != 0) {
+            throw new BusinessRuleViolationException(
+                    "Account balance must be zero before closing");
+        }
+
+        account.setStatus(AccountStatus.CLOSED);
+    }
+
     private String generateUniqueAccountNumber() {
         String accountNumber;
         do {
@@ -178,6 +219,7 @@ public class AccountServiceImpl implements AccountService {
         account.setAccountType(request.accountType());
         account.setBalance(BigDecimal.ZERO.setScale(2));
         account.setCurrency(request.currency());
+        account.setStatus(AccountStatus.ACTIVE);
         account.setUser(user);
 
         return accountMapper.toDto(accountRepository.save(account));
@@ -203,6 +245,12 @@ public class AccountServiceImpl implements AccountService {
                 && entry.getDescription().equals(request.description());
         if (!sameRequest) {
             throw new ResourceConflictException("Idempotency key was already used for another operation");
+        }
+    }
+
+    private void requireActiveAccount(Account account, String message) {
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessRuleViolationException(message);
         }
     }
 

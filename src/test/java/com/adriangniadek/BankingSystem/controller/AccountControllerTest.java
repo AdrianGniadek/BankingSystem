@@ -5,6 +5,7 @@ import com.adriangniadek.BankingSystem.dto.AccountEntryDTO;
 import com.adriangniadek.BankingSystem.dto.CreateAccountRequest;
 import com.adriangniadek.BankingSystem.dto.CreateDepositRequest;
 import com.adriangniadek.BankingSystem.enums.AccountEntryType;
+import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.exception.ResourceNotFoundException;
 import com.adriangniadek.BankingSystem.security.JwtAuthFilter;
@@ -55,7 +56,8 @@ class AccountControllerTest {
     void shouldCreateAccountForCurrentUser() throws Exception {
         CreateAccountRequest request = new CreateAccountRequest(AccountType.CHECKING, "PLN");
         AccountDTO account = new AccountDTO(
-                1L, "12345678901234567890", AccountType.CHECKING, BigDecimal.ZERO, "PLN", 1L);
+                1L, "12345678901234567890", AccountType.CHECKING,
+                BigDecimal.ZERO, "PLN", AccountStatus.ACTIVE, 1L);
         Mockito.when(accountService.createCurrentUserAccount(eq(EMAIL), any(CreateAccountRequest.class)))
                 .thenReturn(account);
 
@@ -72,7 +74,7 @@ class AccountControllerTest {
         Mockito.when(accountService.getCurrentUserAccounts(EMAIL)).thenReturn(List.of(
                 new AccountDTO(
                         1L, "12345678901234567890", AccountType.CHECKING,
-                        BigDecimal.ZERO, "PLN", 1L)));
+                        BigDecimal.ZERO, "PLN", AccountStatus.ACTIVE, 1L)));
 
         mockMvc.perform(get("/accounts/me").principal(AUTHENTICATION))
                 .andExpect(status().isOk())
@@ -107,7 +109,8 @@ class AccountControllerTest {
     void shouldCreateAccount() throws Exception {
         CreateAccountRequest request = new CreateAccountRequest(AccountType.SAVINGS, "PLN");
         AccountDTO dto = new AccountDTO(
-                1L, "12345678901234567890", AccountType.SAVINGS, BigDecimal.ZERO, "PLN", 1L);
+                1L, "12345678901234567890", AccountType.SAVINGS,
+                BigDecimal.ZERO, "PLN", AccountStatus.ACTIVE, 1L);
         Mockito.when(accountService.createAccount(eq(1L), any(CreateAccountRequest.class))).thenReturn(dto);
 
         mockMvc.perform(post("/accounts/1")
@@ -120,8 +123,10 @@ class AccountControllerTest {
     @Test
     void shouldReturnUserAccounts() throws Exception {
         List<AccountDTO> accounts = List.of(
-                new AccountDTO(1L, "PL111", AccountType.SAVINGS, BigDecimal.valueOf(1000), "PLN", 1L),
-                new AccountDTO(2L, "PL222", AccountType.CHECKING, BigDecimal.valueOf(500), "PLN", 1L)
+                new AccountDTO(1L, "PL111", AccountType.SAVINGS,
+                        BigDecimal.valueOf(1000), "PLN", AccountStatus.ACTIVE, 1L),
+                new AccountDTO(2L, "PL222", AccountType.CHECKING,
+                        BigDecimal.valueOf(500), "PLN", AccountStatus.BLOCKED, 1L)
         );
 
         Mockito.when(accountService.getUserAccounts(1L)).thenReturn(accounts);
@@ -130,6 +135,37 @@ class AccountControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].accountNumber").value("PL111"));
+    }
+
+    @Test
+    void shouldUpdateAccountStatus() throws Exception {
+        AccountDTO blockedAccount = new AccountDTO(
+                1L, "12345678901234567890", AccountType.CHECKING,
+                BigDecimal.ZERO, "PLN", AccountStatus.BLOCKED, 1L);
+        Mockito.when(accountService.updateAccountStatus(eq(1L), any())).thenReturn(blockedAccount);
+
+        mockMvc.perform(patch("/accounts/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"BLOCKED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("BLOCKED"));
+    }
+
+    @Test
+    void shouldCloseAccount() throws Exception {
+        mockMvc.perform(delete("/accounts/1"))
+                .andExpect(status().isNoContent());
+
+        Mockito.verify(accountService).closeAccount(1L);
+    }
+
+    @Test
+    void shouldRejectMissingAccountStatus() throws Exception {
+        mockMvc.perform(patch("/accounts/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.status").value("Account status is required"));
     }
 
     @Test
