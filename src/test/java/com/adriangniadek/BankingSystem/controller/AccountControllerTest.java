@@ -61,7 +61,7 @@ class AccountControllerTest {
         Mockito.when(accountService.createCurrentUserAccount(eq(EMAIL), any(CreateAccountRequest.class)))
                 .thenReturn(account);
 
-        mockMvc.perform(post("/accounts/me")
+        mockMvc.perform(post("/accounts")
                         .principal(AUTHENTICATION)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -76,7 +76,7 @@ class AccountControllerTest {
                         1L, "12345678901234567890", AccountType.CHECKING,
                         BigDecimal.ZERO, "PLN", AccountStatus.ACTIVE, 1L)));
 
-        mockMvc.perform(get("/accounts/me").principal(AUTHENTICATION))
+        mockMvc.perform(get("/accounts").principal(AUTHENTICATION))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].currency").value("PLN"));
@@ -113,7 +113,7 @@ class AccountControllerTest {
                 BigDecimal.ZERO, "PLN", AccountStatus.ACTIVE, 1L);
         Mockito.when(accountService.createAccount(eq(1L), any(CreateAccountRequest.class))).thenReturn(dto);
 
-        mockMvc.perform(post("/accounts/1")
+        mockMvc.perform(post("/accounts/users/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -131,10 +131,22 @@ class AccountControllerTest {
 
         Mockito.when(accountService.getUserAccounts(1L)).thenReturn(accounts);
 
-        mockMvc.perform(get("/accounts/1"))
+        mockMvc.perform(get("/accounts/users/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].accountNumber").value("PL111"));
+    }
+
+    @Test
+    void shouldReturnAccountDetails() throws Exception {
+        AccountDTO account = new AccountDTO(
+                1L, "12345678901234567890", AccountType.CHECKING,
+                new BigDecimal("100.00"), "PLN", AccountStatus.ACTIVE, 1L);
+        Mockito.when(accountService.getAccountById(1L)).thenReturn(account);
+
+        mockMvc.perform(get("/accounts/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountNumber").value("12345678901234567890"));
     }
 
     @Test
@@ -172,7 +184,7 @@ class AccountControllerTest {
     void shouldReturnAccountBalance() throws Exception {
         Mockito.when(accountService.getAccountBalance(1L)).thenReturn(BigDecimal.valueOf(1234.56));
 
-        mockMvc.perform(get("/accounts/balance/1"))
+        mockMvc.perform(get("/accounts/1/balance"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("1234.56"));
     }
@@ -182,19 +194,19 @@ class AccountControllerTest {
         Mockito.when(accountService.getAccountBalance(99L))
                 .thenThrow(new ResourceNotFoundException("Account not found"));
 
-        mockMvc.perform(get("/accounts/balance/99"))
+        mockMvc.perform(get("/accounts/99/balance"))
                 .andExpect(status().isNotFound())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Resource not found"))
                 .andExpect(jsonPath("$.detail").value("Account not found"))
-                .andExpect(jsonPath("$.instance").value("/accounts/balance/99"));
+                .andExpect(jsonPath("$.instance").value("/accounts/99/balance"));
     }
 
     @Test
     void shouldReturnValidationErrorsForInvalidAccount() throws Exception {
         CreateAccountRequest invalidRequest = new CreateAccountRequest(null, "pln");
 
-        mockMvc.perform(post("/accounts/1")
+        mockMvc.perform(post("/accounts/users/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())

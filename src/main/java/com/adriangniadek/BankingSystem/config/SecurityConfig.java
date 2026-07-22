@@ -56,7 +56,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/users/**").hasRole("ADMIN")
                         .requestMatchers("/profile/**").authenticated()
-                        .requestMatchers("/accounts/**", "/transfers/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(
+                                "/accounts",
+                                "/accounts/**",
+                                "/transfers",
+                                "/transfers/**",
+                                "/demo/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(
                                 "/",
                                 "/index.html",

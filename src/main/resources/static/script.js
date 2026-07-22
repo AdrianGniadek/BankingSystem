@@ -99,8 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 async function fetchAccounts() {
     try {
-        const userId = prompt("Podaj swoje ID użytkownika:");
-        const response = await authenticatedFetch(`${BASE_URL}/accounts/${userId}`);
+        const response = await authenticatedFetch(`${BASE_URL}/accounts`);
 
         if (response.ok) {
             const accounts = await response.json();

@@ -151,8 +151,10 @@ class MySqlBankingIT {
         Account firstTarget = accountRepository.saveAndFlush(account(owner, "10000000000000000002", "0.00"));
         Account secondTarget = accountRepository.saveAndFlush(account(owner, "10000000000000000003", "0.00"));
 
-        CreateTransferRequest firstRequest = transferRequest(source.getId(), firstTarget.getId());
-        CreateTransferRequest secondRequest = transferRequest(source.getId(), secondTarget.getId());
+        CreateTransferRequest firstRequest = transferRequest(
+                source.getId(), firstTarget.getAccountNumber());
+        CreateTransferRequest secondRequest = transferRequest(
+                source.getId(), secondTarget.getAccountNumber());
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -202,7 +204,7 @@ class MySqlBankingIT {
         CreateTransferRequest request = new CreateTransferRequest(
                 UUID.randomUUID(),
                 fundingAccount.getId(),
-                closingAccount.getId(),
+                closingAccount.getAccountNumber(),
                 new BigDecimal("10.00"),
                 "PLN",
                 "Concurrent closure transfer");
@@ -315,11 +317,11 @@ class MySqlBankingIT {
         return account;
     }
 
-    private CreateTransferRequest transferRequest(Long sourceAccountId, Long targetAccountId) {
+    private CreateTransferRequest transferRequest(Long sourceAccountId, String targetAccountNumber) {
         return new CreateTransferRequest(
                 UUID.randomUUID(),
                 sourceAccountId,
-                targetAccountId,
+                targetAccountNumber,
                 new BigDecimal("80.00"),
                 "PLN",
                 "Concurrent integration transfer");

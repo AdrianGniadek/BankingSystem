@@ -18,9 +18,11 @@ public record CreateTransferRequest(
         @Positive(message = "Source account ID must be positive")
         Long sourceAccountId,
 
-        @NotNull(message = "Target account ID is required")
-        @Positive(message = "Target account ID must be positive")
-        Long targetAccountId,
+        @NotBlank(message = "Target account number is required")
+        @Pattern(
+                regexp = "[1-9][0-9]{19}",
+                message = "Target account number must contain exactly 20 digits and cannot start with zero")
+        String targetAccountNumber,
 
         @NotNull(message = "Amount is required")
         @DecimalMin(value = "0.01", message = "Amount must be at least 0.01")

@@ -28,7 +28,7 @@ import java.util.List;
 public class AccountController {
     private final AccountService accountService;
 
-    @PostMapping("/me")
+    @PostMapping
     public ResponseEntity<AccountDTO> createCurrentUserAccount(
             @RequestBody @Valid CreateAccountRequest request,
             Authentication authentication) {
@@ -36,7 +36,7 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedAccount);
     }
 
-    @GetMapping("/me")
+    @GetMapping
     public ResponseEntity<List<AccountDTO>> getCurrentUserAccounts(Authentication authentication) {
         return ResponseEntity.ok(accountService.getCurrentUserAccounts(authentication.getName()));
     }
@@ -50,7 +50,7 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(entry);
     }
 
-    @PostMapping("/{userId}")
+    @PostMapping("/users/{userId}")
     public ResponseEntity<AccountDTO> createAccount(
             @PathVariable @Positive(message = "User ID must be positive") Long userId,
             @RequestBody @Valid CreateAccountRequest request) {
@@ -58,28 +58,28 @@ public class AccountController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedAccount);
     }
 
-    @GetMapping("/{userId}")
+    @GetMapping("/users/{userId}")
     public ResponseEntity<List<AccountDTO>> getUserAccounts(
             @PathVariable @Positive(message = "User ID must be positive") Long userId) {
         List<AccountDTO> accounts = accountService.getUserAccounts(userId);
         return ResponseEntity.ok(accounts);
     }
 
-    @GetMapping("/details/{accountId}")
+    @GetMapping("/{accountId}")
     public ResponseEntity<AccountDTO> getAccountDetails(
             @PathVariable @Positive(message = "Account ID must be positive") Long accountId) {
         AccountDTO account = accountService.getAccountById(accountId);
         return ResponseEntity.ok(account);
     }
 
-    @GetMapping("/balance/{accountId}")
+    @GetMapping("/{accountId}/balance")
     public ResponseEntity<BigDecimal> getAccountBalance(
             @PathVariable @Positive(message = "Account ID must be positive") Long accountId) {
         BigDecimal balance = accountService.getAccountBalance(accountId);
         return ResponseEntity.ok(balance);
     }
 
-    @GetMapping("/statement/{accountId}")
+    @GetMapping("/{accountId}/statement")
     public ResponseEntity<AccountStatementDTO> getAccountStatement(
             @PathVariable @Positive(message = "Account ID must be positive") Long accountId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,

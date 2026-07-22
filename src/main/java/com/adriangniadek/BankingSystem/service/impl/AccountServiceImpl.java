@@ -60,7 +60,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessUser(#userId, authentication)")
+    @PreAuthorize("hasRole('ADMIN')")
     public AccountDTO createAccount(Long userId, CreateAccountRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -72,6 +72,20 @@ public class AccountServiceImpl implements AccountService {
     @Transactional
     @PreAuthorize("hasRole('ADMIN')")
     public AccountEntryDTO deposit(Long accountId, CreateDepositRequest request, String createdBy) {
+        return performDeposit(accountId, request, createdBy);
+    }
+
+    @Override
+    @Transactional
+    @PreAuthorize("authentication.name == #createdBy "
+            + "and @bankingAuthorization.canAccessAccount(#accountId, authentication)")
+    public AccountEntryDTO depositCurrentUserAccount(
+            Long accountId, CreateDepositRequest request, String createdBy) {
+        return performDeposit(accountId, request, createdBy);
+    }
+
+    private AccountEntryDTO performDeposit(
+            Long accountId, CreateDepositRequest request, String createdBy) {
         Account account = accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException("Account not found"));
 
@@ -105,7 +119,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    @PreAuthorize("hasRole('ADMIN') or @bankingAuthorization.canAccessUser(#userId, authentication)")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<AccountDTO> getUserAccounts(Long userId) {
         return accountRepository.findByUserId(userId).stream()
                 .map(accountMapper::toDto)

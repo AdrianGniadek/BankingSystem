@@ -10,8 +10,8 @@ public class TransferMapper {
     public TransferDTO toDto(Transfer transfer) {
         return new TransferDTO(
                 transfer.getId(),
-                transfer.getSourceAccount().getId(),
-                transfer.getTargetAccount().getId(),
+                transfer.getSourceAccount().getAccountNumber(),
+                transfer.getTargetAccount().getAccountNumber(),
                 transfer.getAmount(),
                 transfer.getCurrency(),
                 transfer.getDescription(),
