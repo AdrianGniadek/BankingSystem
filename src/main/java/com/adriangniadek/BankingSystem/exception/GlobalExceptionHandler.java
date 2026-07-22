@@ -43,6 +43,16 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.UNAUTHORIZED, "Authentication failed", "Invalid email or password", request);
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    ResponseEntity<ProblemDetail> handleInvalidRefreshToken(
+            InvalidRefreshTokenException exception, HttpServletRequest request) {
+        return response(
+                HttpStatus.UNAUTHORIZED,
+                "Authentication failed",
+                exception.getMessage(),
+                request);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ProblemDetail> handleAccessDenied(
             AccessDeniedException exception, HttpServletRequest request) {

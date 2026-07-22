@@ -72,7 +72,7 @@ class TransferControllerTest {
         String mockToken = "mock-jwt-token";
         String testEmail = "test@example.com";
 
-        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.validateAccessToken(mockToken)).thenReturn(true);
         Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
 
         Mockito.when(userDetailsService.loadUserByUsername(testEmail))
@@ -96,7 +96,7 @@ class TransferControllerTest {
         String mockToken = "mock-jwt-token";
         String testEmail = "test@example.com";
 
-        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.validateAccessToken(mockToken)).thenReturn(true);
         Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
         Mockito.when(userDetailsService.loadUserByUsername(testEmail))
                 .thenReturn(new User(testEmail, "password",
@@ -123,7 +123,7 @@ class TransferControllerTest {
                 1L, 1L, 2L, new BigDecimal("25.00"), "PLN", "Payment",
                 TransferStatus.COMPLETED, LocalDateTime.now());
 
-        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.validateAccessToken(mockToken)).thenReturn(true);
         Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
         Mockito.when(userDetailsService.loadUserByUsername(testEmail))
                 .thenReturn(new User(testEmail, "password",

@@ -13,7 +13,8 @@ class JwtPropertiesTest {
     void shouldAcceptSecureConfiguration() {
         var properties = new JwtProperties(
                 "test-only-signing-key-must-be-at-least-32-bytes-long-for-hs256",
-                Duration.ofHours(1));
+                Duration.ofMinutes(15),
+                Duration.ofDays(30));
 
         try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
             assertThat(validatorFactory.getValidator().validate(properties)).isEmpty();
@@ -22,12 +23,15 @@ class JwtPropertiesTest {
 
     @Test
     void shouldRejectWeakSecretAndInvalidExpiration() {
-        var properties = new JwtProperties("too-short", Duration.ZERO);
+        var properties = new JwtProperties("too-short", Duration.ZERO, Duration.ofSeconds(-1));
 
         try (var validatorFactory = Validation.buildDefaultValidatorFactory()) {
             assertThat(validatorFactory.getValidator().validate(properties))
                     .extracting(violation -> violation.getPropertyPath().toString())
-                    .containsExactlyInAnyOrder("secret", "expirationValid");
+                    .containsExactlyInAnyOrder(
+                            "secret",
+                            "accessTokenExpirationValid",
+                            "refreshTokenExpirationValid");
         }
     }
 }

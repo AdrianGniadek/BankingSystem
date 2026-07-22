@@ -1,16 +1,20 @@
 package com.adriangniadek.BankingSystem.integration;
 
 import com.adriangniadek.BankingSystem.dto.CreateTransferRequest;
+import com.adriangniadek.BankingSystem.dto.LoginRequest;
 import com.adriangniadek.BankingSystem.enums.AccountStatus;
 import com.adriangniadek.BankingSystem.enums.AccountType;
 import com.adriangniadek.BankingSystem.exception.BusinessRuleViolationException;
+import com.adriangniadek.BankingSystem.exception.InvalidRefreshTokenException;
 import com.adriangniadek.BankingSystem.model.Account;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.AccountEntryRepository;
 import com.adriangniadek.BankingSystem.repository.AccountRepository;
+import com.adriangniadek.BankingSystem.repository.RefreshTokenRepository;
 import com.adriangniadek.BankingSystem.repository.TransferRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.AccountService;
+import com.adriangniadek.BankingSystem.service.AuthenticationService;
 import com.adriangniadek.BankingSystem.service.TransferService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.RepeatedTest;
@@ -20,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -40,6 +45,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @Testcontainers
 @SpringBootTest
@@ -66,17 +72,51 @@ class MySqlBankingIT {
     private AccountEntryRepository accountEntryRepository;
 
     @Autowired
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Autowired
     private TransferService transferService;
 
     @Autowired
     private AccountService accountService;
 
+    @Autowired
+    private AuthenticationService authenticationService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @BeforeEach
     void cleanBusinessData() {
+        refreshTokenRepository.deleteAllInBatch();
         accountEntryRepository.deleteAllInBatch();
         transferRepository.deleteAllInBatch();
         accountRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void shouldRotateRefreshTokenAndDetectItsReuse() {
+        User sessionUser = user();
+        sessionUser.setPassword(passwordEncoder.encode("password123"));
+        userRepository.saveAndFlush(sessionUser);
+
+        AuthenticationService.SessionTokens initialTokens = authenticationService.login(
+                new LoginRequest(sessionUser.getEmail(), "password123"));
+        AuthenticationService.SessionTokens rotatedTokens = authenticationService.refresh(
+                initialTokens.refreshToken());
+
+        assertThat(rotatedTokens.accessToken()).isNotBlank();
+        assertThat(rotatedTokens.refreshToken()).isNotEqualTo(initialTokens.refreshToken());
+        assertThat(refreshTokenRepository.findAll())
+                .hasSize(2)
+                .filteredOn(token -> token.getRevokedAt() == null)
+                .hasSize(1);
+
+        assertThatThrownBy(() -> authenticationService.refresh(initialTokens.refreshToken()))
+                .isInstanceOf(InvalidRefreshTokenException.class);
+        assertThat(refreshTokenRepository.findAll())
+                .allMatch(token -> token.getRevokedAt() != null);
     }
 
     @Test
@@ -93,10 +133,15 @@ class MySqlBankingIT {
                 "SELECT COUNT(*) FROM information_schema.tables "
                         + "WHERE table_schema = DATABASE() AND table_name = 'account_entries'",
                 Integer.class);
+        Integer refreshTokenTableCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                        + "WHERE table_schema = DATABASE() AND table_name = 'refresh_tokens'",
+                Integer.class);
 
-        assertThat(versions).containsExactly("1", "2", "3");
+        assertThat(versions).containsExactly("1", "2", "3", "4");
         assertThat(roleCount).isEqualTo(2);
         assertThat(ledgerTableCount).isEqualTo(1);
+        assertThat(refreshTokenTableCount).isEqualTo(1);
     }
 
     @RepeatedTest(5)

@@ -14,6 +14,7 @@ import com.adriangniadek.BankingSystem.mapper.UserMapper;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.RoleRepository;
+import com.adriangniadek.BankingSystem.repository.RefreshTokenRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -48,6 +51,12 @@ class UserServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
+    private Clock clock;
 
     @Spy
     private UserMapper userMapper = new UserMapper();
@@ -207,16 +216,19 @@ class UserServiceImplTest {
 
     @Test
     void shouldChangePassword() {
+        Instant now = Instant.parse("2026-07-22T12:00:00Z");
         ChangePasswordRequest request = new ChangePasswordRequest("password123", "newPassword123");
         when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(request.currentPassword(), user.getPassword())).thenReturn(true);
         when(passwordEncoder.matches(request.newPassword(), user.getPassword())).thenReturn(false);
         when(passwordEncoder.encode(request.newPassword())).thenReturn("newHash");
+        when(clock.instant()).thenReturn(now);
 
         userService.changePassword(user.getEmail(), request);
 
         assertThat(user.getPassword()).isEqualTo("newHash");
         verify(userRepository).save(user);
+        verify(refreshTokenRepository).revokeAllActiveForUser(user.getId(), now);
     }
 
     @Test

@@ -31,6 +31,13 @@ class SecurityConfigTest {
     }
 
     @Test
+    void shouldAllowRefreshRequestWithoutAccessToken() throws Exception {
+        mockMvc.perform(post("/auth/refresh"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("Invalid or expired refresh token"));
+    }
+
+    @Test
     void shouldRejectAnonymousUserForProtectedEndpoint() throws Exception {
         mockMvc.perform(get("/users"))
                 .andExpect(status().isUnauthorized())
