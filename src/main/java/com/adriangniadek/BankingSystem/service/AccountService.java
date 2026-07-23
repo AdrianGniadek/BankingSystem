@@ -15,6 +15,7 @@ public interface AccountService {
     List<AccountDTO> getCurrentUserAccounts(String email);
     AccountDTO createAccount(Long userId, CreateAccountRequest request);
     AccountEntryDTO deposit(Long accountId, CreateDepositRequest request, String createdBy);
+    AccountEntryDTO depositCurrentUserAccount(Long accountId, CreateDepositRequest request, String createdBy);
     List<AccountDTO> getUserAccounts(Long userId);
     BigDecimal getAccountBalance(Long accountId);
     AccountDTO getAccountById(Long accountId);

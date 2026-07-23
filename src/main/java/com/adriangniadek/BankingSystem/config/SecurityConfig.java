@@ -47,11 +47,21 @@ public class SecurityConfig {
                                 "Permissions-Policy",
                                 "camera=(), geolocation=(), microphone=()")))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/auth/login", "/auth/register").permitAll()
+                        .requestMatchers(
+                                HttpMethod.POST,
+                                "/auth/login",
+                                "/auth/register",
+                                "/auth/refresh",
+                                "/auth/logout").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health").permitAll()
                         .requestMatchers("/users/**").hasRole("ADMIN")
                         .requestMatchers("/profile/**").authenticated()
-                        .requestMatchers("/accounts/**", "/transfers/**").hasAnyRole("USER", "ADMIN")
+                        .requestMatchers(
+                                "/accounts",
+                                "/accounts/**",
+                                "/transfers",
+                                "/transfers/**",
+                                "/demo/**").hasAnyRole("USER", "ADMIN")
                         .requestMatchers(
                                 "/",
                                 "/index.html",

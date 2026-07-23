@@ -71,7 +71,7 @@ class TransferServiceImplTest {
     @Test
     void shouldCreateCompletedTransferAndLedgerEntries() {
         CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
         when(transferRepository.save(any(Transfer.class))).thenAnswer(invocation -> {
             Transfer transfer = invocation.getArgument(0);
             transfer.setId(1L);
@@ -99,7 +99,7 @@ class TransferServiceImplTest {
         CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
         Transfer existingTransfer = transfer(1L, sourceAccount, targetAccount, "100.00");
         existingTransfer.setIdempotencyKey(request.idempotencyKey().toString());
-        mockLockedAccounts();
+        mockLockedAccounts(request);
         when(transferRepository.findByIdempotencyKey(request.idempotencyKey().toString()))
                 .thenReturn(Optional.of(existingTransfer));
 
@@ -115,7 +115,7 @@ class TransferServiceImplTest {
     void shouldRejectIdempotencyKeyUsedWithDifferentTransfer() {
         CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
         Transfer existingTransfer = transfer(1L, sourceAccount, targetAccount, "50.00");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
         when(transferRepository.findByIdempotencyKey(request.idempotencyKey().toString()))
                 .thenReturn(Optional.of(existingTransfer));
 
@@ -127,7 +127,7 @@ class TransferServiceImplTest {
     @Test
     void shouldLockAccountsInIdentifierOrder() {
         CreateTransferRequest request = request(2L, 1L, "100.00", "PLN");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
         when(transferRepository.save(any(Transfer.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         transferService.createTransfer(request, "owner@example.com");
@@ -140,7 +140,7 @@ class TransferServiceImplTest {
     @Test
     void shouldRejectTransferWithInsufficientFunds() {
         CreateTransferRequest request = request(1L, 2L, "600.00", "PLN");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
 
         assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
                 .isInstanceOf(BusinessRuleViolationException.class)
@@ -153,7 +153,7 @@ class TransferServiceImplTest {
     void shouldRejectTransferBetweenDifferentCurrencies() {
         targetAccount.setCurrency("EUR");
         CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
 
         assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
                 .isInstanceOf(BusinessRuleViolationException.class)
@@ -164,7 +164,7 @@ class TransferServiceImplTest {
     void shouldRejectTransferFromBlockedAccount() {
         sourceAccount.setStatus(AccountStatus.BLOCKED);
         CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
 
         assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
                 .isInstanceOf(BusinessRuleViolationException.class)
@@ -175,7 +175,7 @@ class TransferServiceImplTest {
     void shouldRejectTransferToClosedAccount() {
         targetAccount.setStatus(AccountStatus.CLOSED);
         CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
-        mockLockedAccounts();
+        mockLockedAccounts(request);
 
         assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
                 .isInstanceOf(BusinessRuleViolationException.class)
@@ -185,9 +185,24 @@ class TransferServiceImplTest {
     @Test
     void shouldRejectTransferToSameAccountBeforeLocking() {
         CreateTransferRequest request = request(1L, 1L, "100.00", "PLN");
+        when(accountRepository.findIdByAccountNumber(request.targetAccountNumber()))
+                .thenReturn(Optional.of(sourceAccount.getId()));
 
         assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
                 .isInstanceOf(BusinessRuleViolationException.class);
+
+        verify(accountRepository, never()).findByIdForUpdate(any());
+    }
+
+    @Test
+    void shouldRejectTransferToUnknownAccountNumber() {
+        CreateTransferRequest request = request(1L, 2L, "100.00", "PLN");
+        when(accountRepository.findIdByAccountNumber(request.targetAccountNumber()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> transferService.createTransfer(request, "owner@example.com"))
+                .isInstanceOf(com.adriangniadek.BankingSystem.exception.ResourceNotFoundException.class)
+                .hasMessage("Target account not found");
 
         verify(accountRepository, never()).findByIdForUpdate(any());
     }
@@ -205,12 +220,18 @@ class TransferServiceImplTest {
         PageResponse<TransferDTO> transfers = transferService.getTransfersForAccount(1L, 0, 20);
 
         assertThat(transfers.content()).hasSize(2);
-        assertThat(transfers.content().getFirst().targetAccountId()).isEqualTo(1L);
+        assertThat(transfers.content().getFirst().targetAccountNumber())
+                .isEqualTo(sourceAccount.getAccountNumber());
         assertThat(transfers.page()).isZero();
         assertThat(transfers.totalElements()).isEqualTo(2);
     }
 
-    private void mockLockedAccounts() {
+    private void mockLockedAccounts(CreateTransferRequest request) {
+        Account target = request.targetAccountNumber().equals(sourceAccount.getAccountNumber())
+                ? sourceAccount
+                : targetAccount;
+        when(accountRepository.findIdByAccountNumber(request.targetAccountNumber()))
+                .thenReturn(Optional.of(target.getId()));
         when(accountRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(sourceAccount));
         when(accountRepository.findByIdForUpdate(2L)).thenReturn(Optional.of(targetAccount));
     }
@@ -218,6 +239,9 @@ class TransferServiceImplTest {
     private Account account(Long id, String balance, String currency) {
         Account account = new Account();
         account.setId(id);
+        account.setAccountNumber(id == 1L
+                ? "11111111111111111111"
+                : "22222222222222222222");
         account.setBalance(new BigDecimal(balance));
         account.setCurrency(currency);
         account.setStatus(AccountStatus.ACTIVE);
@@ -229,7 +253,9 @@ class TransferServiceImplTest {
         return new CreateTransferRequest(
                 UUID.randomUUID(),
                 sourceAccountId,
-                targetAccountId,
+                targetAccountId == 1L
+                        ? "11111111111111111111"
+                        : "22222222222222222222",
                 new BigDecimal(amount),
                 currency,
                 "Test transfer");

@@ -1,23 +1,84 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Logowanie</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Logowanie | BankingSystem</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<h2>Logowanie</h2>
-<form id="login-form">
-  <label>Email:
-    <input type="email" id="email" required>
-  </label>
-  <label>Hasło:
-    <input type="password" id="password" required>
-  </label>
-  <button type="submit">Zaloguj</button>
-  <button type="button" onclick="window.location.href='/register.html'">Zarejestruj się</button>
-</form>
+<body class="auth-page" data-page="login">
+<main class="auth-layout">
+    <section class="auth-brand" aria-labelledby="brand-title">
+        <a class="brand brand--light" href="/" aria-label="BankingSystem">
+            <span class="brand-mark">BS</span>
+            <span>BankingSystem</span>
+        </a>
+        <div class="auth-brand__content">
+            <p class="eyebrow">Bankowość internetowa</p>
+            <h1 id="brand-title">Twoje finanse.<br>Jasno i bezpiecznie.</h1>
+            <div class="security-note">
+                <i data-lucide="shield-check" aria-hidden="true"></i>
+                <span>Chroniona sesja i szyfrowane dane logowania</span>
+            </div>
+        </div>
+        <p class="auth-brand__footer">Projekt demonstracyjny BankingSystem</p>
+    </section>
 
-<script src="script.js"></script>
+    <section class="auth-panel">
+        <div class="auth-card">
+            <div class="auth-heading">
+                <p class="eyebrow">Witaj ponownie</p>
+                <h2>Zaloguj się</h2>
+                <p>Wprowadź dane dostępowe do swojego konta.</p>
+            </div>
+
+            <div id="auth-alert" class="alert" role="alert" hidden></div>
+
+            <form id="login-form" class="form-stack" novalidate>
+                <div class="field">
+                    <label for="login-email">Adres e-mail</label>
+                    <div class="input-with-icon">
+                        <i data-lucide="mail" aria-hidden="true"></i>
+                        <input id="login-email" name="email" type="email" autocomplete="email"
+                               placeholder="jan@example.com" required>
+                    </div>
+                    <span class="field-error" data-error-for="email"></span>
+                </div>
+
+                <div class="field">
+                    <label for="login-password">Hasło</label>
+                    <div class="input-with-icon">
+                        <i data-lucide="lock-keyhole" aria-hidden="true"></i>
+                        <input id="login-password" name="password" type="password"
+                               autocomplete="current-password" minlength="8" maxlength="72"
+                               placeholder="Minimum 8 znaków" required>
+                        <button class="icon-button input-action" type="button"
+                                data-password-toggle="login-password" aria-label="Pokaż hasło"
+                                title="Pokaż hasło">
+                            <i data-lucide="eye" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                    <span class="field-error" data-error-for="password"></span>
+                </div>
+
+                <button class="button button--primary button--wide" type="submit">
+                    <span>Zaloguj się</span>
+                    <i data-lucide="arrow-right" aria-hidden="true"></i>
+                </button>
+            </form>
+
+            <p class="auth-switch">Nie masz jeszcze konta?
+                <a href="/register.html">Utwórz konto</a>
+            </p>
+        </div>
+    </section>
+</main>
+
+<div id="toast-region" class="toast-region" aria-live="polite"></div>
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"
+        integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu"
+        crossorigin="anonymous"></script>
+<script src="/script.js"></script>
 </body>
 </html>

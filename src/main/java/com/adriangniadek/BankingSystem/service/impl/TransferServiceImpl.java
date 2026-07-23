@@ -44,13 +44,18 @@ public class TransferServiceImpl implements TransferService {
         validateRequest(request);
 
         String idempotencyKey = request.idempotencyKey().toString();
-        Long firstAccountId = Math.min(request.sourceAccountId(), request.targetAccountId());
-        Long secondAccountId = Math.max(request.sourceAccountId(), request.targetAccountId());
+        Long targetAccountId = accountRepository.findIdByAccountNumber(request.targetAccountNumber())
+                .orElseThrow(() -> new ResourceNotFoundException("Target account not found"));
+        if (request.sourceAccountId().equals(targetAccountId)) {
+            throw new BusinessRuleViolationException("Source and target accounts cannot be the same");
+        }
+        Long firstAccountId = Math.min(request.sourceAccountId(), targetAccountId);
+        Long secondAccountId = Math.max(request.sourceAccountId(), targetAccountId);
 
-        Account firstAccount = findAccountForUpdate(firstAccountId, request);
-        Account secondAccount = findAccountForUpdate(secondAccountId, request);
+        Account firstAccount = findAccountForUpdate(firstAccountId, request.sourceAccountId());
+        Account secondAccount = findAccountForUpdate(secondAccountId, request.sourceAccountId());
         Account sourceAccount = request.sourceAccountId().equals(firstAccountId) ? firstAccount : secondAccount;
-        Account targetAccount = request.targetAccountId().equals(firstAccountId) ? firstAccount : secondAccount;
+        Account targetAccount = targetAccountId.equals(firstAccountId) ? firstAccount : secondAccount;
 
         Transfer existingTransfer = transferRepository.findByIdempotencyKey(idempotencyKey).orElse(null);
         if (existingTransfer != null) {
@@ -101,13 +106,10 @@ public class TransferServiceImpl implements TransferService {
         if (request.amount() == null || request.amount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessRuleViolationException("Transfer amount must be greater than zero");
         }
-        if (request.sourceAccountId().equals(request.targetAccountId())) {
-            throw new BusinessRuleViolationException("Source and target accounts cannot be the same");
-        }
     }
 
-    private Account findAccountForUpdate(Long accountId, CreateTransferRequest request) {
-        String accountType = accountId.equals(request.sourceAccountId()) ? "Source" : "Target";
+    private Account findAccountForUpdate(Long accountId, Long sourceAccountId) {
+        String accountType = accountId.equals(sourceAccountId) ? "Source" : "Target";
         return accountRepository.findByIdForUpdate(accountId)
                 .orElseThrow(() -> new ResourceNotFoundException(accountType + " account not found"));
     }
@@ -151,7 +153,7 @@ public class TransferServiceImpl implements TransferService {
 
     private void validateRepeatedTransfer(Transfer transfer, CreateTransferRequest request) {
         boolean sameRequest = transfer.getSourceAccount().getId().equals(request.sourceAccountId())
-                && transfer.getTargetAccount().getId().equals(request.targetAccountId())
+                && transfer.getTargetAccount().getAccountNumber().equals(request.targetAccountNumber())
                 && transfer.getAmount().compareTo(request.amount()) == 0
                 && transfer.getCurrency().equals(request.currency())
                 && Objects.equals(transfer.getDescription(), request.description());

@@ -17,11 +17,23 @@ public record JwtProperties(
         String secret,
 
         @NotNull
-        Duration expiration
+        Duration accessTokenExpiration,
+
+        @NotNull
+        Duration refreshTokenExpiration
 ) {
 
-    @AssertTrue(message = "JWT expiration must be greater than zero")
-    public boolean isExpirationValid() {
-        return expiration != null && !expiration.isZero() && !expiration.isNegative();
+    @AssertTrue(message = "JWT access token expiration must be greater than zero")
+    public boolean isAccessTokenExpirationValid() {
+        return isPositive(accessTokenExpiration);
+    }
+
+    @AssertTrue(message = "Refresh token expiration must be greater than zero")
+    public boolean isRefreshTokenExpirationValid() {
+        return isPositive(refreshTokenExpiration);
+    }
+
+    private boolean isPositive(Duration duration) {
+        return duration != null && !duration.isZero() && !duration.isNegative();
     }
 }

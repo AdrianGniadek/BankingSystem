@@ -2,14 +2,20 @@
 <html lang="pl">
 <head>
     <meta charset="UTF-8">
-    <title>Bank - Strona główna</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>BankingSystem</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<h1>Bankowy System</h1>
-<nav>
-    <button type="submit" onclick="window.location.href='/login.html'">Zaloguj się</button>
-    <button type="submit" onclick="window.location.href='/accounts.html'">Moje konta</button>
-</nav>
+<body class="route-loader">
+<main class="route-loader__content" aria-live="polite">
+    <span class="brand-mark" aria-hidden="true">BS</span>
+    <strong>BankingSystem</strong>
+    <span class="spinner" aria-hidden="true"></span>
+    <p>Otwieranie bankowości</p>
+</main>
+<script>
+    window.location.replace("/login.html");
+</script>
 </body>
 </html>

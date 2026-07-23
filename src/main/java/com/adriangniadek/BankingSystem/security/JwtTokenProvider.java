@@ -9,6 +9,7 @@ import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
 import javax.crypto.SecretKey;
@@ -17,21 +18,27 @@ import javax.crypto.SecretKey;
 public class JwtTokenProvider {
 
     private final JwtProperties properties;
+    private final Clock clock;
     private final SecretKey signingKey;
     private final JwtParser jwtParser;
 
-    public JwtTokenProvider(JwtProperties properties) {
+    public JwtTokenProvider(JwtProperties properties, Clock clock) {
         this.properties = properties;
+        this.clock = clock;
         this.signingKey = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
-        this.jwtParser = Jwts.parser().verifyWith(signingKey).build();
+        this.jwtParser = Jwts.parser()
+                .clock(() -> Date.from(clock.instant()))
+                .verifyWith(signingKey)
+                .build();
     }
 
-    public String generateToken(String username) {
-        Instant now = Instant.now();
-        Instant expiration = now.plus(properties.expiration());
+    public String generateAccessToken(String username) {
+        Instant now = clock.instant();
+        Instant expiration = now.plus(properties.accessTokenExpiration());
 
         return Jwts.builder()
                 .subject(username)
+                .claim("type", "access")
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
                 .signWith(signingKey)
@@ -43,13 +50,17 @@ public class JwtTokenProvider {
         return claims.getSubject();
     }
 
-    public boolean validateToken(String token) {
+    public boolean validateAccessToken(String token) {
         try {
-            jwtParser.parseSignedClaims(token);
-            return true;
+            Claims claims = jwtParser.parseSignedClaims(token).getPayload();
+            return "access".equals(claims.get("type", String.class));
         } catch (JwtException | IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    public long getAccessTokenExpirationSeconds() {
+        return properties.accessTokenExpiration().toSeconds();
     }
 }
 

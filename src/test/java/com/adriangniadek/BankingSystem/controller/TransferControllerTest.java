@@ -52,7 +52,7 @@ class TransferControllerTest {
         CreateTransferRequest request = new CreateTransferRequest(
                 UUID.randomUUID(),
                 1L,
-                2L,
+                "22222222222222222222",
                 BigDecimal.valueOf(500),
                 "PLN",
                 "Payment"
@@ -60,8 +60,8 @@ class TransferControllerTest {
 
         TransferDTO savedTransfer = new TransferDTO(
                 1L,
-                1L,
-                2L,
+                "11111111111111111111",
+                "22222222222222222222",
                 BigDecimal.valueOf(500),
                 "PLN",
                 "Payment",
@@ -72,7 +72,7 @@ class TransferControllerTest {
         String mockToken = "mock-jwt-token";
         String testEmail = "test@example.com";
 
-        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.validateAccessToken(mockToken)).thenReturn(true);
         Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
 
         Mockito.when(userDetailsService.loadUserByUsername(testEmail))
@@ -88,6 +88,7 @@ class TransferControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1L))
+                .andExpect(jsonPath("$.targetAccountNumber").value("22222222222222222222"))
                 .andExpect(jsonPath("$.amount").value(500));
     }
 
@@ -96,14 +97,14 @@ class TransferControllerTest {
         String mockToken = "mock-jwt-token";
         String testEmail = "test@example.com";
 
-        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.validateAccessToken(mockToken)).thenReturn(true);
         Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
         Mockito.when(userDetailsService.loadUserByUsername(testEmail))
                 .thenReturn(new User(testEmail, "password",
                         List.of(new SimpleGrantedAuthority("ROLE_USER"))));
 
         CreateTransferRequest request = new CreateTransferRequest(
-                UUID.randomUUID(), 1L, 2L, BigDecimal.ZERO, "pln", null);
+                UUID.randomUUID(), 1L, "22222222222222222222", BigDecimal.ZERO, "pln", null);
 
         mockMvc.perform(post("/transfers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -120,10 +121,11 @@ class TransferControllerTest {
         String mockToken = "mock-jwt-token";
         String testEmail = "test@example.com";
         TransferDTO transfer = new TransferDTO(
-                1L, 1L, 2L, new BigDecimal("25.00"), "PLN", "Payment",
+                1L, "11111111111111111111", "22222222222222222222",
+                new BigDecimal("25.00"), "PLN", "Payment",
                 TransferStatus.COMPLETED, LocalDateTime.now());
 
-        Mockito.when(jwtTokenProvider.validateToken(mockToken)).thenReturn(true);
+        Mockito.when(jwtTokenProvider.validateAccessToken(mockToken)).thenReturn(true);
         Mockito.when(jwtTokenProvider.getUsernameFromJWT(mockToken)).thenReturn(testEmail);
         Mockito.when(userDetailsService.loadUserByUsername(testEmail))
                 .thenReturn(new User(testEmail, "password",

@@ -15,6 +15,7 @@ import com.adriangniadek.BankingSystem.mapper.UserMapper;
 import com.adriangniadek.BankingSystem.model.Role;
 import com.adriangniadek.BankingSystem.model.User;
 import com.adriangniadek.BankingSystem.repository.RoleRepository;
+import com.adriangniadek.BankingSystem.repository.RefreshTokenRepository;
 import com.adriangniadek.BankingSystem.repository.UserRepository;
 import com.adriangniadek.BankingSystem.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.util.Set;
 
 @Service
@@ -34,6 +36,8 @@ public class UserServiceImpl implements UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserMapper userMapper;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -121,6 +125,7 @@ public class UserServiceImpl implements UserService {
 
         user.setPassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+        refreshTokenRepository.revokeAllActiveForUser(user.getId(), clock.instant());
     }
 
     private User getUserById(Long id) {

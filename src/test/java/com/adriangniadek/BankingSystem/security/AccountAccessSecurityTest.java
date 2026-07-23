@@ -80,14 +80,14 @@ class AccountAccessSecurityTest {
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldAllowOwnerToReadAccountBalance() throws Exception {
-        mockMvc.perform(get("/accounts/balance/{accountId}", ownerAccount.getId()))
+        mockMvc.perform(get("/accounts/{accountId}/balance", ownerAccount.getId()))
                 .andExpect(status().isOk())
                 .andExpect(content().string("100.00"));
     }
 
     @Test
-    @WithMockUser(username = "owner@example.com", roles = "USER")
-    void shouldCreateAccountWithServerGeneratedValues() throws Exception {
+    @WithMockUser(roles = "ADMIN")
+    void shouldAllowAdministratorToCreateAccountForUser() throws Exception {
         String requestBody = """
                 {
                   "accountType": "SAVINGS",
@@ -95,7 +95,7 @@ class AccountAccessSecurityTest {
                 }
                 """;
 
-        mockMvc.perform(post("/accounts/{userId}", ownerUserId)
+        mockMvc.perform(post("/accounts/users/{userId}", ownerUserId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -108,7 +108,7 @@ class AccountAccessSecurityTest {
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldReturnAccountsForCurrentUser() throws Exception {
-        mockMvc.perform(get("/accounts/me"))
+        mockMvc.perform(get("/accounts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", org.hamcrest.Matchers.hasSize(1)))
                 .andExpect(jsonPath("$[0].id").value(ownerAccount.getId()))
@@ -125,7 +125,7 @@ class AccountAccessSecurityTest {
                 }
                 """;
 
-        mockMvc.perform(post("/accounts/me")
+        mockMvc.perform(post("/accounts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isCreated())
@@ -138,7 +138,7 @@ class AccountAccessSecurityTest {
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldRejectAccessToAnotherUsersAccount() throws Exception {
-        mockMvc.perform(get("/accounts/balance/{accountId}", otherAccount.getId()))
+        mockMvc.perform(get("/accounts/{accountId}/balance", otherAccount.getId()))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
                 .andExpect(jsonPath("$.title").value("Access denied"));
@@ -147,14 +147,14 @@ class AccountAccessSecurityTest {
     @Test
     @WithMockUser(username = "owner@example.com", roles = "USER")
     void shouldRejectAccessToAnotherUsersAccountList() throws Exception {
-        mockMvc.perform(get("/accounts/{userId}", otherUserId))
+        mockMvc.perform(get("/accounts/users/{userId}", otherUserId))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "ADMIN")
     void shouldAllowAdministratorToReadAnyAccount() throws Exception {
-        mockMvc.perform(get("/accounts/balance/{accountId}", otherAccount.getId()))
+        mockMvc.perform(get("/accounts/{accountId}/balance", otherAccount.getId()))
                 .andExpect(status().isOk());
     }
 
@@ -165,12 +165,15 @@ class AccountAccessSecurityTest {
                 {
                   "idempotencyKey": "%s",
                   "sourceAccountId": %d,
-                  "targetAccountId": %d,
+                  "targetAccountNumber": "%s",
                   "amount": 10.00,
                   "currency": "PLN",
                   "description": "Unauthorized transfer"
                 }
-                """.formatted(UUID.randomUUID(), otherAccount.getId(), ownerAccount.getId());
+                """.formatted(
+                        UUID.randomUUID(),
+                        otherAccount.getId(),
+                        ownerAccount.getAccountNumber());
 
         mockMvc.perform(post("/transfers")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -188,18 +191,23 @@ class AccountAccessSecurityTest {
                 {
                   "idempotencyKey": "%s",
                   "sourceAccountId": %d,
-                  "targetAccountId": %d,
+                  "targetAccountNumber": "%s",
                   "amount": 25.00,
                   "currency": "PLN",
                   "description": "Authorized transfer"
                 }
-                """.formatted(idempotencyKey, ownerAccount.getId(), otherAccount.getId());
+                """.formatted(
+                        idempotencyKey,
+                        ownerAccount.getId(),
+                        otherAccount.getAccountNumber());
 
         mockMvc.perform(post("/transfers")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.targetAccountNumber")
+                        .value(otherAccount.getAccountNumber()))
                 .andExpect(jsonPath("$.createdAt").exists());
 
         mockMvc.perform(post("/transfers")
@@ -239,7 +247,7 @@ class AccountAccessSecurityTest {
                 .isEqualByComparingTo("150.00");
         assertThat(accountEntryRepository.count()).isOne();
 
-        mockMvc.perform(get("/accounts/statement/{accountId}", ownerAccount.getId())
+        mockMvc.perform(get("/accounts/{accountId}/statement", ownerAccount.getId())
                         .param("startDate", statementStart.toString())
                         .param("endDate", LocalDateTime.now().plusMinutes(1).toString()))
                 .andExpect(status().isOk())
@@ -266,6 +274,64 @@ class AccountAccessSecurityTest {
                 .andExpect(status().isForbidden());
 
         assertThat(accountEntryRepository.count()).isZero();
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldAllowOwnerToFundAccountInDemoMode() throws Exception {
+        String requestBody = """
+                {
+                  "idempotencyKey": "%s",
+                  "amount": 50.00,
+                  "currency": "PLN"
+                }
+                """.formatted(UUID.randomUUID());
+
+        mockMvc.perform(post("/demo/accounts/{accountId}/deposits", ownerAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.type").value("DEPOSIT"))
+                .andExpect(jsonPath("$.description").value("Demo account funding"));
+
+        assertThat(accountRepository.findById(ownerAccount.getId()).orElseThrow().getBalance())
+                .isEqualByComparingTo("150.00");
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldRejectDemoFundingForAnotherUsersAccount() throws Exception {
+        String requestBody = """
+                {
+                  "idempotencyKey": "%s",
+                  "amount": 50.00,
+                  "currency": "PLN"
+                }
+                """.formatted(UUID.randomUUID());
+
+        mockMvc.perform(post("/demo/accounts/{accountId}/deposits", otherAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "owner@example.com", roles = "USER")
+    void shouldLimitSingleDemoDepositAmount() throws Exception {
+        String requestBody = """
+                {
+                  "idempotencyKey": "%s",
+                  "amount": 10000.01,
+                  "currency": "PLN"
+                }
+                """.formatted(UUID.randomUUID());
+
+        mockMvc.perform(post("/demo/accounts/{accountId}/deposits", ownerAccount.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.amount")
+                        .value("Demo deposit must not exceed 10000.00"));
     }
 
     @Test
