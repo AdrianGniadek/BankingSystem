@@ -1,15 +1,386 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <title>Moje konta</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>Panel klienta | BankingSystem</title>
+    <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-<h2>Lista kont</h2>
-<button onclick="fetchAccounts()">Pobierz moje konta</button>
-<ul id="accounts-list"></ul>
+<body class="app-page" data-page="dashboard">
+<div id="app-loading" class="app-loading" aria-live="polite">
+    <span class="brand-mark">BS</span>
+    <span class="spinner"></span>
+    <p>Ładowanie panelu</p>
+</div>
 
-<script src="script.js"></script>
+<div id="app-shell" class="app-shell" hidden>
+    <aside class="sidebar">
+        <a class="brand brand--light sidebar__brand" href="#overview" aria-label="BankingSystem">
+            <span class="brand-mark">BS</span>
+            <span>BankingSystem</span>
+        </a>
+
+        <nav class="sidebar__nav" aria-label="Nawigacja główna">
+            <button class="nav-item is-active" type="button" data-view-target="overview">
+                <i data-lucide="layout-dashboard" aria-hidden="true"></i>
+                <span>Przegląd</span>
+            </button>
+            <button class="nav-item" type="button" data-view-target="transfer">
+                <i data-lucide="arrow-left-right" aria-hidden="true"></i>
+                <span>Nowy przelew</span>
+            </button>
+            <button class="nav-item" type="button" data-view-target="history">
+                <i data-lucide="list-ordered" aria-hidden="true"></i>
+                <span>Historia</span>
+            </button>
+            <button class="nav-item" type="button" data-view-target="profile">
+                <i data-lucide="user-round" aria-hidden="true"></i>
+                <span>Profil</span>
+            </button>
+        </nav>
+
+        <div class="sidebar__footer">
+            <div class="sidebar-user">
+                <span id="sidebar-avatar" class="avatar">U</span>
+                <span>
+                    <strong id="sidebar-user-name">Użytkownik</strong>
+                    <small id="sidebar-user-email">konto klienta</small>
+                </span>
+            </div>
+            <button id="logout-button" class="icon-button icon-button--dark" type="button"
+                    aria-label="Wyloguj się" title="Wyloguj się">
+                <i data-lucide="log-out" aria-hidden="true"></i>
+            </button>
+        </div>
+    </aside>
+
+    <main class="app-main">
+        <header class="topbar">
+            <div>
+                <p id="page-eyebrow" class="eyebrow">Panel klienta</p>
+                <h1 id="page-title">Dzień dobry</h1>
+            </div>
+            <div class="topbar__actions">
+                <button class="button button--secondary topbar-transfer" type="button"
+                        data-view-target="transfer">
+                    <i data-lucide="send" aria-hidden="true"></i>
+                    <span>Nowy przelew</span>
+                </button>
+                <button id="mobile-menu-button" class="icon-button mobile-menu-button" type="button"
+                        aria-label="Otwórz menu" title="Menu">
+                    <i data-lucide="menu" aria-hidden="true"></i>
+                </button>
+            </div>
+        </header>
+
+        <div id="dashboard-alert" class="alert app-alert" role="alert" hidden></div>
+
+        <section class="app-view is-active" data-view="overview" aria-labelledby="overview-heading">
+            <div class="summary-grid">
+                <article class="summary-card summary-card--balance">
+                    <div class="summary-card__icon">
+                        <i data-lucide="wallet-cards" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <span>Łączne środki w PLN</span>
+                        <strong id="total-balance">0,00 zł</strong>
+                        <small id="balance-caption">Na aktywnych rachunkach PLN</small>
+                    </div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-card__icon summary-card__icon--green">
+                        <i data-lucide="landmark" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <span>Twoje rachunki</span>
+                        <strong id="accounts-count">0</strong>
+                        <small id="active-accounts-caption">Brak aktywnych rachunków</small>
+                    </div>
+                </article>
+                <article class="summary-card">
+                    <div class="summary-card__icon summary-card__icon--coral">
+                        <i data-lucide="activity" aria-hidden="true"></i>
+                    </div>
+                    <div>
+                        <span>Ostatnia aktywność</span>
+                        <strong id="activity-count">0</strong>
+                        <small>Operacje z ostatnich 90 dni</small>
+                    </div>
+                </article>
+            </div>
+
+            <div class="section-heading section-heading--accounts">
+                <div>
+                    <p class="eyebrow">Rachunki</p>
+                    <h2 id="overview-heading">Twoje konta</h2>
+                </div>
+                <button id="open-account-dialog" class="button button--secondary" type="button">
+                    <i data-lucide="plus" aria-hidden="true"></i>
+                    <span>Nowe konto</span>
+                </button>
+            </div>
+
+            <div id="accounts-grid" class="accounts-grid" aria-live="polite"></div>
+
+            <section class="activity-section" aria-labelledby="recent-heading">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">Ostatnie operacje</p>
+                        <h2 id="recent-heading">Aktywność na rachunkach</h2>
+                    </div>
+                    <button class="text-button" type="button" data-view-target="history">
+                        Zobacz całą historię
+                        <i data-lucide="arrow-right" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <div id="recent-activity" class="activity-list"></div>
+            </section>
+        </section>
+
+        <section class="app-view" data-view="transfer" aria-labelledby="transfer-heading">
+            <div class="content-grid content-grid--form">
+                <div class="content-panel">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Płatności</p>
+                            <h2 id="transfer-heading">Nowy przelew</h2>
+                        </div>
+                        <span class="status-badge status-badge--safe">
+                            <i data-lucide="shield-check" aria-hidden="true"></i>
+                            Bezpieczna operacja
+                        </span>
+                    </div>
+
+                    <form id="transfer-form" class="form-stack" novalidate>
+                        <div class="field">
+                            <label for="transfer-source">Z rachunku</label>
+                            <select id="transfer-source" name="sourceAccountId" required></select>
+                            <span class="field-error" data-error-for="sourceAccountId"></span>
+                        </div>
+
+                        <div class="field">
+                            <label for="transfer-target">Numer rachunku odbiorcy</label>
+                            <input id="transfer-target" name="targetAccountNumber" type="text"
+                                   inputmode="numeric" maxlength="20" pattern="[1-9][0-9]{19}"
+                                   placeholder="20 cyfr" required>
+                            <span class="field-hint">Wpisz numer bez spacji.</span>
+                            <span class="field-error" data-error-for="targetAccountNumber"></span>
+                        </div>
+
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="transfer-amount">Kwota</label>
+                                <div class="amount-input">
+                                    <input id="transfer-amount" name="amount" type="number"
+                                           min="0.01" step="0.01" placeholder="0,00" required>
+                                    <span id="transfer-currency">PLN</span>
+                                </div>
+                                <span class="field-error" data-error-for="amount"></span>
+                            </div>
+                            <div class="field">
+                                <label for="transfer-description">Tytuł przelewu</label>
+                                <input id="transfer-description" name="description" type="text"
+                                       maxlength="255" placeholder="Np. Opłata za mieszkanie">
+                                <span class="field-error" data-error-for="description"></span>
+                            </div>
+                        </div>
+
+                        <button class="button button--primary button--submit" type="submit">
+                            <i data-lucide="send" aria-hidden="true"></i>
+                            <span>Wyślij przelew</span>
+                        </button>
+                    </form>
+                </div>
+
+                <aside class="transfer-summary" aria-label="Podsumowanie rachunku">
+                    <div class="transfer-summary__icon">
+                        <i data-lucide="credit-card" aria-hidden="true"></i>
+                    </div>
+                    <p>Wybrany rachunek</p>
+                    <strong id="transfer-account-balance">0,00 zł</strong>
+                    <span id="transfer-account-number">Nie wybrano rachunku</span>
+                    <div class="transfer-summary__divider"></div>
+                    <small>Dostępne środki</small>
+                    <b id="transfer-available-balance">0,00 zł</b>
+                </aside>
+            </div>
+        </section>
+
+        <section class="app-view" data-view="history" aria-labelledby="history-heading">
+            <div class="content-panel">
+                <div class="section-heading section-heading--history">
+                    <div>
+                        <p class="eyebrow">Operacje</p>
+                        <h2 id="history-heading">Historia rachunku</h2>
+                    </div>
+                    <div class="history-controls">
+                        <label class="sr-only" for="history-account">Rachunek</label>
+                        <select id="history-account"></select>
+                        <button id="refresh-history" class="icon-button" type="button"
+                                aria-label="Odśwież historię" title="Odśwież historię">
+                            <i data-lucide="refresh-cw" aria-hidden="true"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="history-content" class="history-content"></div>
+            </div>
+        </section>
+
+        <section class="app-view" data-view="profile" aria-labelledby="profile-heading">
+            <div class="profile-grid">
+                <div class="content-panel">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Dane klienta</p>
+                            <h2 id="profile-heading">Twój profil</h2>
+                        </div>
+                    </div>
+                    <form id="profile-form" class="form-stack" novalidate>
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="profile-first-name">Imię</label>
+                                <input id="profile-first-name" name="firstName" type="text"
+                                       minlength="2" maxlength="25" required>
+                                <span class="field-error" data-error-for="firstName"></span>
+                            </div>
+                            <div class="field">
+                                <label for="profile-last-name">Nazwisko</label>
+                                <input id="profile-last-name" name="lastName" type="text"
+                                       minlength="2" maxlength="25" required>
+                                <span class="field-error" data-error-for="lastName"></span>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="profile-email">Adres e-mail</label>
+                            <input id="profile-email" type="email" readonly>
+                        </div>
+                        <div class="field">
+                            <label for="profile-phone">Numer telefonu</label>
+                            <input id="profile-phone" name="phoneNumber" type="tel"
+                                   inputmode="tel" pattern="[0-9]{9}" maxlength="9" required>
+                            <span class="field-error" data-error-for="phoneNumber"></span>
+                        </div>
+                        <button class="button button--primary button--submit" type="submit">
+                            <i data-lucide="save" aria-hidden="true"></i>
+                            <span>Zapisz dane</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="content-panel">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Bezpieczeństwo</p>
+                            <h2>Zmiana hasła</h2>
+                        </div>
+                    </div>
+                    <form id="password-form" class="form-stack" novalidate>
+                        <div class="field">
+                            <label for="current-password">Aktualne hasło</label>
+                            <input id="current-password" name="currentPassword" type="password"
+                                   autocomplete="current-password" required>
+                            <span class="field-error" data-error-for="currentPassword"></span>
+                        </div>
+                        <div class="field">
+                            <label for="new-password">Nowe hasło</label>
+                            <input id="new-password" name="newPassword" type="password"
+                                   autocomplete="new-password" minlength="8" maxlength="72" required>
+                            <span class="field-hint">Od 8 do 72 znaków.</span>
+                            <span class="field-error" data-error-for="newPassword"></span>
+                        </div>
+                        <button class="button button--secondary button--submit" type="submit">
+                            <i data-lucide="key-round" aria-hidden="true"></i>
+                            <span>Zmień hasło</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<dialog id="account-dialog" class="dialog">
+    <form id="account-form" method="dialog" class="dialog__content" novalidate>
+        <div class="dialog__header">
+            <div>
+                <p class="eyebrow">Nowy produkt</p>
+                <h2>Otwórz konto</h2>
+            </div>
+            <button class="icon-button" type="button" data-close-dialog="account-dialog"
+                    aria-label="Zamknij" title="Zamknij">
+                <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="field">
+            <label for="account-type">Rodzaj rachunku</label>
+            <select id="account-type" name="accountType" required>
+                <option value="CHECKING">Konto osobiste</option>
+                <option value="SAVINGS">Konto oszczędnościowe</option>
+            </select>
+            <span class="field-error" data-error-for="accountType"></span>
+        </div>
+        <div class="field">
+            <label for="account-currency">Waluta</label>
+            <select id="account-currency" name="currency" required>
+                <option value="PLN">PLN - złoty polski</option>
+                <option value="EUR">EUR - euro</option>
+                <option value="USD">USD - dolar amerykański</option>
+            </select>
+            <span class="field-error" data-error-for="currency"></span>
+        </div>
+        <div class="dialog__actions">
+            <button class="button button--ghost" type="button" data-close-dialog="account-dialog">
+                Anuluj
+            </button>
+            <button class="button button--primary" type="submit">
+                <span>Otwórz konto</span>
+                <i data-lucide="arrow-right" aria-hidden="true"></i>
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="funding-dialog" class="dialog">
+    <form id="funding-form" method="dialog" class="dialog__content" novalidate>
+        <div class="dialog__header">
+            <div>
+                <p class="eyebrow">Tryb demonstracyjny</p>
+                <h2>Zasil konto</h2>
+            </div>
+            <button class="icon-button" type="button" data-close-dialog="funding-dialog"
+                    aria-label="Zamknij" title="Zamknij">
+                <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+        </div>
+        <p id="funding-account-label" class="dialog__description"></p>
+        <input id="funding-account-id" name="accountId" type="hidden">
+        <div class="field">
+            <label for="funding-amount">Kwota zasilenia</label>
+            <div class="amount-input">
+                <input id="funding-amount" name="amount" type="number" min="0.01"
+                       max="10000" step="0.01" placeholder="0,00" required>
+                <span id="funding-currency">PLN</span>
+            </div>
+            <span class="field-hint">Maksymalnie 10 000,00 w pojedynczej operacji.</span>
+            <span class="field-error" data-error-for="amount"></span>
+        </div>
+        <div class="dialog__actions">
+            <button class="button button--ghost" type="button" data-close-dialog="funding-dialog">
+                Anuluj
+            </button>
+            <button class="button button--primary" type="submit">
+                <i data-lucide="circle-dollar-sign" aria-hidden="true"></i>
+                <span>Zasil konto</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+
+<div id="toast-region" class="toast-region" aria-live="polite"></div>
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"
+        integrity="sha384-uTYyvsSSUZeaPhb5RbKlQa0zY/WpX/QHfvg2mczXyBQOpkWPEDy9lczyp+w7SKXu"
+        crossorigin="anonymous"></script>
+<script src="/script.js"></script>
 </body>
 </html>
