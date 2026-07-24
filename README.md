@@ -58,11 +58,11 @@ problemów przy równoczesnych operacjach.
 
 ## Wymagania
 
-- Java 21,
-- MySQL 8,
-- Docker Desktop, jeśli baza lub testy integracyjne mają działać w kontenerze.
+- Docker Desktop z Docker Compose.
 
-Nie trzeba instalować Mavena. Repozytorium zawiera Maven Wrapper.
+Java 21 jest potrzebna tylko wtedy, gdy aplikacja ma być uruchamiana poza
+kontenerem. Nie trzeba instalować Mavena, ponieważ repozytorium zawiera Maven
+Wrapper.
 
 ## Uruchomienie lokalne
 
@@ -73,61 +73,60 @@ git clone https://github.com/AdrianGniadek/BankingSystem.git
 cd BankingSystem
 ```
 
-### 2. Uruchom MySQL
+### 2. Przygotuj konfigurację
 
-Możesz wykorzystać istniejącą lokalną instancję MySQL albo uruchomić bazę
-w Dockerze:
-
-```powershell
-docker run --name banking-mysql `
-  -e MYSQL_ROOT_PASSWORD=banking_password `
-  -e MYSQL_DATABASE=banking_system `
-  -p 3306:3306 `
-  -d mysql:8.0
-```
-
-Przy kolejnych uruchomieniach wystarczy:
+Utwórz lokalny plik `.env` na podstawie przykładu:
 
 ```powershell
-docker start banking-mysql
-```
-
-### 3. Ustaw zmienne środowiskowe
-
-W PowerShell:
-
-```powershell
-$env:DB_PASSWORD = "banking_password"
-$env:JWT_SECRET = "local-development-secret-change-me-123456"
-```
-
-Sekret JWT musi zawierać co najmniej 32 znaki. Powyższa wartość jest wyłącznie
-przykładem lokalnym i nie powinna być używana w środowisku publicznym.
-
-### 4. Uruchom aplikację
-
-Na Windows:
-
-```powershell
-.\mvnw.cmd spring-boot:run
+Copy-Item .env.example .env
 ```
 
 Na Linux lub macOS:
 
 ```bash
-export DB_PASSWORD="banking_password"
-export JWT_SECRET="local-development-secret-change-me-123456"
-./mvnw spring-boot:run
+cp .env.example .env
 ```
 
-Aplikacja będzie dostępna pod adresem:
+Przed uruchomieniem zmień wartości `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD` oraz
+`JWT_SECRET` w pliku `.env`. Sekret JWT musi zawierać co najmniej 32 znaki.
+
+### 3. Uruchom aplikację
+
+```powershell
+docker compose up --build
+```
+
+Po uruchomieniu aplikacja będzie dostępna pod adresem:
 
 ```text
 http://localhost:8080
 ```
 
+Zatrzymanie kontenerów:
+
+```powershell
+docker compose down
+```
+
+Wyczyszczenie kontenerów razem z lokalnymi danymi MySQL:
+
+```powershell
+docker compose down --volumes
+```
+
 Profil `local` jest domyślny. Automatycznie uruchamia migracje Flyway i włącza
 demonstracyjne zasilanie rachunku.
+
+### Uruchomienie z IntelliJ IDEA
+
+Jeśli aplikacja ma działać bez kontenera, uruchom sam MySQL:
+
+```powershell
+docker compose up -d mysql
+```
+
+Następnie ustaw `DB_USERNAME`, `DB_PASSWORD` i `JWT_SECRET` w konfiguracji
+uruchomieniowej IntelliJ IDEA i uruchom klasę `BankingSystemApplication`.
 
 ## Konfiguracja
 
